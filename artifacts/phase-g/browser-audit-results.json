@@ -1,0 +1,510 @@
+{
+  "baseURL": "http://127.0.0.1:5174",
+  "browser": "Chrome 154.0.8037.99",
+  "results": [
+    {
+      "name": "Public landing is available signed out",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Landing disclaimer explicitly says no real contract analysis is performed",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Landing initial load excludes 3D and Three.js assets",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Landing Product anchor works",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Landing How it works anchor works",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Landing Capabilities anchor works",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Landing FAQ anchor works",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "FAQ keyboard-operable control toggles expanded state",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Privacy page opens",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Terms page opens",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Keyboard focus reaches mobile navigation toggle",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Mobile navigation opens from keyboard and moves focus inside",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Escape closes mobile navigation and restores menu-button focus",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Landing has no horizontal overflow at 375px",
+      "status": "PASS",
+      "details": "scrollWidth=375"
+    },
+    {
+      "name": "Landing has no horizontal overflow at 768px",
+      "status": "PASS",
+      "details": "scrollWidth=768"
+    },
+    {
+      "name": "Landing has no horizontal overflow at 1024px",
+      "status": "PASS",
+      "details": "scrollWidth=1024"
+    },
+    {
+      "name": "Landing has no horizontal overflow at 1440px",
+      "status": "PASS",
+      "details": "scrollWidth=1440"
+    },
+    {
+      "name": "Keyboard focus reaches login email field",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Keyboard login validation reports invalid email and empty password",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Password visibility control reveals and re-hides the input",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Password hides after toggle",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Login explains credential handling",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Valid demo-form entry stores only the demo session marker",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Login sends no credentials in network requests",
+      "status": "PASS",
+      "details": "non-GET/credential-bearing requests=0"
+    },
+    {
+      "name": "Demo session survives refresh in the same tab",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Sign out clears session and returns to public landing",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Signed-out protected deep link redirects to login with local next path",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Demo entry returns to requested protected destination",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "External next value safely resolves to app dashboard",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Direct route /app/dashboard loads",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Refresh on /app/dashboard remains in the app",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Direct route /app/new-scan loads",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Refresh on /app/new-scan remains in the app",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Direct route /app/scans loads",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Refresh on /app/scans remains in the app",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Direct route /app/scans/demo-scan-2026-014 loads",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Refresh on /app/scans/demo-scan-2026-014 remains in the app",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Direct route /app/scans/demo-scan-2026-014/findings/demo-finding-014-001 loads",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Refresh on /app/scans/demo-scan-2026-014/findings/demo-finding-014-001 remains in the app",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Direct route /app/reports/demo-scan-2026-014 loads",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Refresh on /app/reports/demo-scan-2026-014 remains in the app",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Direct route /app/settings loads",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Refresh on /app/settings remains in the app",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Keyboard-only dashboard navigation opens New Scan",
+      "status": "PASS",
+      "details": "tab focus reached link=true"
+    },
+    {
+      "name": "New Scan creates a deterministic browser-local demo record",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "History no-match state is visible",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Created record can be deleted from local history",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Invalid scan ID renders not-found state",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Invalid finding ID renders not-found state",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Keyboard graph node selection updates source excerpt",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Selected source is brought into view",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "Report JSON download produces mock report data",
+      "status": "PASS",
+      "details": "Vault-demo-report-demo-scan-2026-014.json"
+    },
+    {
+      "name": "Print/PDF output includes report pages and excludes stages",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "landing has no horizontal overflow at 375px",
+      "status": "PASS",
+      "details": "scrollWidth=375"
+    },
+    {
+      "name": "dashboard has no horizontal overflow at 375px",
+      "status": "PASS",
+      "details": "scrollWidth=375"
+    },
+    {
+      "name": "new scan has no horizontal overflow at 375px",
+      "status": "PASS",
+      "details": "scrollWidth=375"
+    },
+    {
+      "name": "history has no horizontal overflow at 375px",
+      "status": "PASS",
+      "details": "scrollWidth=375"
+    },
+    {
+      "name": "scan details has no horizontal overflow at 375px",
+      "status": "PASS",
+      "details": "scrollWidth=375"
+    },
+    {
+      "name": "finding has no horizontal overflow at 375px",
+      "status": "PASS",
+      "details": "scrollWidth=375"
+    },
+    {
+      "name": "report has no horizontal overflow at 375px",
+      "status": "PASS",
+      "details": "scrollWidth=375"
+    },
+    {
+      "name": "settings has no horizontal overflow at 375px",
+      "status": "PASS",
+      "details": "scrollWidth=375"
+    },
+    {
+      "name": "landing has no horizontal overflow at 768px",
+      "status": "PASS",
+      "details": "scrollWidth=768"
+    },
+    {
+      "name": "dashboard has no horizontal overflow at 768px",
+      "status": "PASS",
+      "details": "scrollWidth=768"
+    },
+    {
+      "name": "new scan has no horizontal overflow at 768px",
+      "status": "PASS",
+      "details": "scrollWidth=768"
+    },
+    {
+      "name": "history has no horizontal overflow at 768px",
+      "status": "PASS",
+      "details": "scrollWidth=768"
+    },
+    {
+      "name": "scan details has no horizontal overflow at 768px",
+      "status": "PASS",
+      "details": "scrollWidth=768"
+    },
+    {
+      "name": "finding has no horizontal overflow at 768px",
+      "status": "PASS",
+      "details": "scrollWidth=768"
+    },
+    {
+      "name": "report has no horizontal overflow at 768px",
+      "status": "PASS",
+      "details": "scrollWidth=768"
+    },
+    {
+      "name": "settings has no horizontal overflow at 768px",
+      "status": "PASS",
+      "details": "scrollWidth=768"
+    },
+    {
+      "name": "landing has no horizontal overflow at 1024px",
+      "status": "PASS",
+      "details": "scrollWidth=1024"
+    },
+    {
+      "name": "dashboard has no horizontal overflow at 1024px",
+      "status": "PASS",
+      "details": "scrollWidth=1024"
+    },
+    {
+      "name": "new scan has no horizontal overflow at 1024px",
+      "status": "PASS",
+      "details": "scrollWidth=1024"
+    },
+    {
+      "name": "history has no horizontal overflow at 1024px",
+      "status": "PASS",
+      "details": "scrollWidth=1024"
+    },
+    {
+      "name": "scan details has no horizontal overflow at 1024px",
+      "status": "PASS",
+      "details": "scrollWidth=1024"
+    },
+    {
+      "name": "finding has no horizontal overflow at 1024px",
+      "status": "PASS",
+      "details": "scrollWidth=1024"
+    },
+    {
+      "name": "report has no horizontal overflow at 1024px",
+      "status": "PASS",
+      "details": "scrollWidth=1024"
+    },
+    {
+      "name": "settings has no horizontal overflow at 1024px",
+      "status": "PASS",
+      "details": "scrollWidth=1024"
+    },
+    {
+      "name": "landing has no horizontal overflow at 1440px",
+      "status": "PASS",
+      "details": "scrollWidth=1440"
+    },
+    {
+      "name": "dashboard has no horizontal overflow at 1440px",
+      "status": "PASS",
+      "details": "scrollWidth=1440"
+    },
+    {
+      "name": "new scan has no horizontal overflow at 1440px",
+      "status": "PASS",
+      "details": "scrollWidth=1440"
+    },
+    {
+      "name": "history has no horizontal overflow at 1440px",
+      "status": "PASS",
+      "details": "scrollWidth=1440"
+    },
+    {
+      "name": "scan details has no horizontal overflow at 1440px",
+      "status": "PASS",
+      "details": "scrollWidth=1440"
+    },
+    {
+      "name": "finding has no horizontal overflow at 1440px",
+      "status": "PASS",
+      "details": "scrollWidth=1440"
+    },
+    {
+      "name": "report has no horizontal overflow at 1440px",
+      "status": "PASS",
+      "details": "scrollWidth=1440"
+    },
+    {
+      "name": "settings has no horizontal overflow at 1440px",
+      "status": "PASS",
+      "details": "scrollWidth=1440"
+    },
+    {
+      "name": "All scan/security labels remain explicitly demo/illustrative",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "No uncaught browser or console errors across tested flows",
+      "status": "PASS",
+      "details": ""
+    },
+    {
+      "name": "No backend requests or credential submissions were made; Monaco loads static vendor assets",
+      "status": "PASS",
+      "details": "remote static asset requests=67; non-GET=0; unexpected remote requests=0"
+    }
+  ],
+  "failures": [],
+  "screenshots": [
+    {
+      "path": "C:\\Users\\THUSH\\Desktop\\ThreePiece\\ContractIQ\\artifacts\\phase-g\\landing-desktop-1440.png",
+      "bytes": 615481
+    },
+    {
+      "path": "C:\\Users\\THUSH\\Desktop\\ThreePiece\\ContractIQ\\artifacts\\phase-g\\landing-mobile-375.png",
+      "bytes": 391682
+    },
+    {
+      "path": "C:\\Users\\THUSH\\Desktop\\ThreePiece\\ContractIQ\\artifacts\\phase-g\\login-desktop-1440.png",
+      "bytes": 182571
+    },
+    {
+      "path": "C:\\Users\\THUSH\\Desktop\\ThreePiece\\ContractIQ\\artifacts\\phase-g\\dashboard-desktop-1440.png",
+      "bytes": 129847
+    },
+    {
+      "path": "C:\\Users\\THUSH\\Desktop\\ThreePiece\\ContractIQ\\artifacts\\phase-g\\new-scan-desktop-1440.png",
+      "bytes": 86748
+    },
+    {
+      "path": "C:\\Users\\THUSH\\Desktop\\ThreePiece\\ContractIQ\\artifacts\\phase-g\\history-desktop-1440.png",
+      "bytes": 81444
+    },
+    {
+      "path": "C:\\Users\\THUSH\\Desktop\\ThreePiece\\ContractIQ\\artifacts\\phase-g\\scan-details-desktop-1440.png",
+      "bytes": 318174
+    },
+    {
+      "path": "C:\\Users\\THUSH\\Desktop\\ThreePiece\\ContractIQ\\artifacts\\phase-g\\finding-desktop-1440.png",
+      "bytes": 269138
+    },
+    {
+      "path": "C:\\Users\\THUSH\\Desktop\\ThreePiece\\ContractIQ\\artifacts\\phase-g\\report-desktop-1440.png",
+      "bytes": 274015
+    },
+    {
+      "path": "C:\\Users\\THUSH\\Desktop\\ThreePiece\\ContractIQ\\artifacts\\phase-g\\settings-desktop-1440.png",
+      "bytes": 49866
+    },
+    {
+      "path": "C:\\Users\\THUSH\\Desktop\\ThreePiece\\ContractIQ\\artifacts\\phase-g\\dashboard-mobile-375.png",
+      "bytes": 82495
+    },
+    {
+      "path": "C:\\Users\\THUSH\\Desktop\\ThreePiece\\ContractIQ\\artifacts\\phase-g\\new-scan-mobile-375.png",
+      "bytes": 64116
+    },
+    {
+      "path": "C:\\Users\\THUSH\\Desktop\\ThreePiece\\ContractIQ\\artifacts\\phase-g\\scan-details-mobile-375.png",
+      "bytes": 117135
+    },
+    {
+      "path": "C:\\Users\\THUSH\\Desktop\\ThreePiece\\ContractIQ\\artifacts\\phase-g\\dashboard-tablet-768.png",
+      "bytes": 106249
+    },
+    {
+      "path": "C:\\Users\\THUSH\\Desktop\\ThreePiece\\ContractIQ\\artifacts\\phase-g\\dashboard-tablet-1024.png",
+      "bytes": 116318
+    }
+  ],
+  "browserErrors": []
+}

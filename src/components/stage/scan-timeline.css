@@ -1,0 +1,22 @@
+.scan-timeline-scene { display: grid; grid-template-rows: minmax(13rem, 1fr) auto auto; width: 100%; min-height: 0; background: #f8fafc; color: #0f172a; }
+.scan-timeline-scene__canvas { min-height: 13rem; overflow: hidden; }
+.scan-timeline-scene__canvas canvas { display: block; width: 100%; height: 100%; min-height: 13rem; }
+.scan-timeline-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr)); max-height: 11rem; gap: 0.5rem; overflow: auto; margin: 0; padding: 0.7rem; border-top: 1px solid #e2e8f0; background: #fff; list-style: none; }
+.scan-timeline-list li { display: flex; min-width: 0; align-items: flex-start; gap: 0.55rem; padding: 0.55rem; border: 1px solid #e2e8f0; border-radius: 0.6rem; }
+.scan-timeline-list li a { display: grid; min-width: 0; gap: 0.15rem; color: #0f172a; text-decoration: none; }
+.scan-timeline-list li a:hover strong { color: #1d4ed8; }
+.scan-timeline-list li a:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.scan-timeline-list strong { overflow: hidden; font-size: 0.75rem; text-overflow: ellipsis; white-space: nowrap; }
+.scan-timeline-list span:not(.scan-timeline-list__marker) { color: #64748b; font-size: 0.68rem; text-transform: capitalize; }
+.scan-timeline-list code { overflow: hidden; color: #475569; font-size: 0.65rem; text-overflow: ellipsis; white-space: nowrap; }
+.scan-timeline-list__marker { width: 0.65rem; height: 0.65rem; flex: 0 0 auto; margin-top: 0.22rem; border-radius: 999px; background: #64748b; }
+.scan-timeline-list__marker--queued { background: #f59e0b; }.scan-timeline-list__marker--running { background: #0ea5e9; }.scan-timeline-list__marker--completed { background: #10b981; }.scan-timeline-list__marker--failed { background: #ef4444; }.scan-timeline-list__marker--cancelled { background: #94a3b8; }
+.scan-timeline-list__empty { grid-column: 1 / -1; color: #64748b; font-size: 0.8rem; }
+.scan-timeline-scene__caption { margin: 0; padding: 0.4rem 0.75rem 0.6rem; color: #64748b; font-size: 0.68rem; }
+.timeline-panel .stage-shell__viewport { min-height: 0; max-height: 420px; aspect-ratio: 16 / 9; }
+.timeline-panel .stage-shell__frame { max-height: 420px; background: #f8fafc; }
+.timeline-panel .stage-shell__fallback { min-height: 0; height: 100%; padding: 0; }
+.history-view-toggle { display: flex; justify-content: flex-end; gap: 0.4rem; margin: 0 0 0.75rem; }
+.history-view-toggle button[aria-pressed='true'] { border-color: var(--accent); background: var(--surface-hover); color: var(--text); }
+
+@media (max-width: 79.999rem) { .scan-timeline-scene__canvas { display: none; } }

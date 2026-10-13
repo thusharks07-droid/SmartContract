@@ -1,0 +1,410 @@
+[
+  {
+    "path": "package.json",
+    "sha256": "70D9CA6DF98873A8A4979BB1625DF38164EA78FA4838F7919459614DACE93E03"
+  },
+  {
+    "path": "package-lock.json",
+    "sha256": "81B2BAF062C26EEAEED049541DC44282E6423750C5DB8541639DEC05DB3DCBBE"
+  },
+  {
+    "path": ".gitignore",
+    "sha256": "FE718E7BABB14F3CBAD2D97F08889B9CE5215ED3FE0E43B2B8CFBFB3B9B844E8"
+  },
+  {
+    "path": "README.md",
+    "sha256": "6B663C320A823ECE372D6B6373E1BDC4706F9527CEF4701EF06B51057DD46BB0"
+  },
+  {
+    "path": "src\\App.css",
+    "sha256": "3FAEF9F46026F7EECBA40F398141539B7BC6203095E9A318720030BC42EB5E3D"
+  },
+  {
+    "path": "src\\App.tsx",
+    "sha256": "37142E2FCFC0BFF235E08FEDAC2FF3A1320CB4FA4B62E25CDC2C2DFC6A31394E"
+  },
+  {
+    "path": "src\\index.css",
+    "sha256": "681B04D399AFE0C11EDAC9D032359CB444ECBD5D9C515BC29CEBD2B25F4F5EE0"
+  },
+  {
+    "path": "src\\main.tsx",
+    "sha256": "99842A9C63A67F7F3FFD57BADB20D35B0561E0787BBA36325F900582F6C30DBA"
+  },
+  {
+    "path": "src\\assets\\hero.png",
+    "sha256": "881FFBCAAFC212E49ADDAD08846A5B82761355FA20624253AF3477BA33262C5C"
+  },
+  {
+    "path": "src\\assets\\react.svg",
+    "sha256": "35EF61ED53B323AE94A16A8EC659B3D0AF3880698791133F23B084085AB1C2E5"
+  },
+  {
+    "path": "src\\assets\\vite.svg",
+    "sha256": "5BE21ACD42EB7B896E517F4E0F0F11EB5C5D9E54FBBCEBE9453F033008FCCA6F"
+  },
+  {
+    "path": "src\\components\\auth\\DemoAuthGuard.test.tsx",
+    "sha256": "756854C454363CE1F5DB45AEA67898FCE7086A2F3B9AE00C717F6C6F1244046D"
+  },
+  {
+    "path": "src\\components\\auth\\DemoAuthGuard.tsx",
+    "sha256": "E46589D5F85BAB48B2DAF612B81519733B0358C3ECF10DAADE1C18FD0C4A6A0D"
+  },
+  {
+    "path": "src\\components\\auth\\safeAppDestination.ts",
+    "sha256": "327C65141A08A447C3A1F1145E940AD4AE22479D11E13C013E48F92400C94199"
+  },
+  {
+    "path": "src\\components\\layout\\AppShell.tsx",
+    "sha256": "2C92F7AFFD750E3CFF3581B17C28441930E1976498F221B82C9ABB6593238594"
+  },
+  {
+    "path": "src\\components\\layout\\Sidebar.tsx",
+    "sha256": "55BEDDE8CB54F5134E717ADF53C70F82C6860FA11EC8B595F3889B0703A751C6"
+  },
+  {
+    "path": "src\\components\\layout\\Topbar.tsx",
+    "sha256": "64D8C9302CB4B9609F7F926DD0AE868A74F1FE0E4EC021A88CD3658C623E22E7"
+  },
+  {
+    "path": "src\\components\\layout\\UserMenu.tsx",
+    "sha256": "5773B320841B70F657B228D7A65ED3EACA9BCBDDD231A012DC1C8D4ABB8C182E"
+  },
+  {
+    "path": "src\\components\\stage\\ProductStageFallbacks.test.tsx",
+    "sha256": "55507F0A7441C1584D2B6F35734ACD8A216CBD6681D043CB730CAF2EAF8A4694"
+  },
+  {
+    "path": "src\\components\\stage\\risk-surface.css",
+    "sha256": "0B87F8C4F4737C4FB9B3B1848AAC722309B84AA9E7A3C092DAF4BB28DCA1028F"
+  },
+  {
+    "path": "src\\components\\stage\\RiskSurfaceFallback.tsx",
+    "sha256": "0D212C512B6FB74B0B658CBA8A98390D750BBB992782BAE9A242BAA0BE1AB89D"
+  },
+  {
+    "path": "src\\components\\stage\\RiskSurfaceScene.tsx",
+    "sha256": "84947DC6D92D9156A952969348F0D377CDB1F46111B7803AAB3DF51C65AE0C22"
+  },
+  {
+    "path": "src\\components\\stage\\scan-timeline.css",
+    "sha256": "046BFE6AB06704B5EBD37199AF9CB099D4879F18A40D3BBB24CCE0125AFC41D4"
+  },
+  {
+    "path": "src\\components\\stage\\ScanTimelineFallback.tsx",
+    "sha256": "64F9CB3E901D868585304C21089DC659259C3403327C343E159C35EDE5015EB6"
+  },
+  {
+    "path": "src\\components\\stage\\ScanTimelineScene.tsx",
+    "sha256": "6EDCEEB34A683224B0BC5345B5BAE8533CEF421CEE47E0CA23BD2FD31AABB662"
+  },
+  {
+    "path": "src\\components\\stage\\SceneErrorBoundary.tsx",
+    "sha256": "A861E56F773B06F937C6B995098B657D36724022F3580872855B2A085BD5BDC4"
+  },
+  {
+    "path": "src\\components\\stage\\ScenePostProcessing.tsx",
+    "sha256": "E350D7F38D2350F8B0E84D2FD39D934DE5634CF23A11C784698BD522101FC3AE"
+  },
+  {
+    "path": "src\\components\\stage\\scenes.css",
+    "sha256": "FE9A270086C658829FF08FDC21B0518399356BA68A6A383DA854A1A3666F9606"
+  },
+  {
+    "path": "src\\components\\stage\\Scenes.tsx",
+    "sha256": "678C5FD031A12C8185C5D4B6941908B877615AEE073EBDB7E5B4A419689DC448"
+  },
+  {
+    "path": "src\\components\\stage\\sceneTokens.ts",
+    "sha256": "9E1498AD923CDB5F9061CFEB76863C291278A489B25EA8B2A1022DC80AD018D8"
+  },
+  {
+    "path": "src\\components\\stage\\severity-orbit.css",
+    "sha256": "007E2A57223F1AA5E9A6A96FE59401CA46385BE3AB4BEE13E6159A1603462543"
+  },
+  {
+    "path": "src\\components\\stage\\SeverityOrbitScene.test.tsx",
+    "sha256": "DD7EE20B45D6DA54D0F874F2EA62ADD2C4AECB0D854D7512E27F3CA7F3E516BD"
+  },
+  {
+    "path": "src\\components\\stage\\SeverityOrbitScene.tsx",
+    "sha256": "CEF5F0853439F75EA8854471C755CEE40F4B32BFB38540186B1785DA400BA074"
+  },
+  {
+    "path": "src\\components\\stage\\stage-shell.css",
+    "sha256": "17CABDE969AAF518D248FC069EDC095D400C1543083298EAB227748D61561EF4"
+  },
+  {
+    "path": "src\\components\\stage\\StageShell.test.tsx",
+    "sha256": "71B1C9EA7131171130933EC7E8466136DDB542ED177E7D1B39415322C2F8EF18"
+  },
+  {
+    "path": "src\\components\\stage\\StageShell.tsx",
+    "sha256": "BE013E0E8BE3D954DE8EA44645EA1305B090746FF9227D3C728FE0515AC7EEB8"
+  },
+  {
+    "path": "src\\components\\stage\\useStageAppearance.ts",
+    "sha256": "D5B69ADEA299F81B7D5566B3395619B464F32959554C3D37B398084F32F7878D"
+  },
+  {
+    "path": "src\\components\\ui\\Badge.tsx",
+    "sha256": "ED506836542733CC61F7DFF4F2D7DD5E160A1837C6DB49243244007E21C22D4B"
+  },
+  {
+    "path": "src\\components\\ui\\CodeViewer.tsx",
+    "sha256": "2839A64638D1B30FC562D8CAB7ED0CE5C750C3F50F939BCD3410052AF2843AAE"
+  },
+  {
+    "path": "src\\components\\ui\\ConfirmDialog.tsx",
+    "sha256": "5B2BA69C69475386ABD3BFFAA7056802307B27724C0BADC01924140486A1D91F"
+  },
+  {
+    "path": "src\\components\\ui\\DataTable.tsx",
+    "sha256": "B7B315F85DD7ED56C056B1A576E4400F8491480E3616DC115BEA644EF359F5AF"
+  },
+  {
+    "path": "src\\components\\ui\\EmptyState.tsx",
+    "sha256": "A827917447015258E1BC86F4F7E1176CAD83E4B297509D201D0931F2531D305A"
+  },
+  {
+    "path": "src\\components\\ui\\ErrorState.tsx",
+    "sha256": "609B6D3D9ADBC03C0D379D4E7F4E9D32326A6882C9BB0430A96E7DA643599F76"
+  },
+  {
+    "path": "src\\components\\ui\\FilterBar.tsx",
+    "sha256": "1BD64998A6A0A067FF20ABC7BC24057CB2566D6A667C58838FEA2DE4534F0371"
+  },
+  {
+    "path": "src\\components\\ui\\FindingCard.tsx",
+    "sha256": "3DF510CF40DA0F06D9858A7AE906247490BB480F3715F856A64DD7FB360DA1C9"
+  },
+  {
+    "path": "src\\components\\ui\\LoadingState.tsx",
+    "sha256": "0B5FDB86FE5AA6B4D819CE3A0775E70C965E74904301C5E8A094D73DB7A832E0"
+  },
+  {
+    "path": "src\\components\\ui\\PageHeader.tsx",
+    "sha256": "84A394F824E595F236668E59922820E4765F737AA799DF9BD3FC6AD19B392F5B"
+  },
+  {
+    "path": "src\\components\\ui\\ReportLayout.tsx",
+    "sha256": "68B7D3D7EED692DD806989F42A59E2C2B1FDB28A703C71C10C8A8EA1AF375524"
+  },
+  {
+    "path": "src\\components\\ui\\ScanStatusBadge.tsx",
+    "sha256": "B08822CDD9881B1DB9E7FEA2D43CEBECDBD2AAA01A959B8E1F6AFB31B9DBC4E0"
+  },
+  {
+    "path": "src\\components\\ui\\ScanSummary.tsx",
+    "sha256": "7F91AD1FD998770B315016A1FC269E25A3B6E1C084FB0B7C4964AF35997BA169"
+  },
+  {
+    "path": "src\\components\\ui\\SearchInput.tsx",
+    "sha256": "1E06C704BBD81FC8C07DAF322EC835980B47176D6A137A7FDDF8F4E1A63B8F3C"
+  },
+  {
+    "path": "src\\components\\ui\\SeverityBadge.tsx",
+    "sha256": "D93435677E558DF60F6E580291CAD4C83CD7915C5772A848E49B90DB7A0AAE12"
+  },
+  {
+    "path": "src\\components\\ui\\solidityLanguage.ts",
+    "sha256": "05A9F1313A0803E5A2A3F40B4657707AC2B4197BBEDE9A222CB56DD92591FFBE"
+  },
+  {
+    "path": "src\\components\\ui\\StatCard.tsx",
+    "sha256": "C5A918B43E5AEC6526426C5FCE0A1D3FBFD0F53F67EA528AD7FA7BCE48A0A76B"
+  },
+  {
+    "path": "src\\components\\ui\\VerificationPanel.tsx",
+    "sha256": "3E1F9EAB54831D8DD58EB66124B71E3BA45A5194CACEDEC0E8C120545166F1D0"
+  },
+  {
+    "path": "src\\components\\ui\\VerificationStatusBadge.tsx",
+    "sha256": "A3451A4C8EE457C1F52723F25E337D16F94C3B7DBE7032D37D8295F2549C1838"
+  },
+  {
+    "path": "src\\data\\graphLayouts.ts",
+    "sha256": "CA8E2CD9ED9D5C8F7AF95370715D6EB2B663B29DBB57BEDC81237CB57D1C47F6"
+  },
+  {
+    "path": "src\\data\\mockData.ts",
+    "sha256": "8A8D82A5D568871BA1ED9169C87B9984DC6714E9AF74C7B2EC150862D92C0CCF"
+  },
+  {
+    "path": "src\\data\\samples\\PasteSample.sol",
+    "sha256": "53119F46F0584162B202B38E900DFE2EBDC99B3857C6BF14DDCDA95F97F33B58"
+  },
+  {
+    "path": "src\\data\\samples\\TokenLedger.sol",
+    "sha256": "05EA9EC2C01586BD2E9702B2FE59AAA9D8FEE2D44F4D60F2E967D09C284D23E6"
+  },
+  {
+    "path": "src\\data\\samples\\Treasury.sol",
+    "sha256": "89CB39BB35CBC3C82B7C290DFE8C02D1486464B90FA9F0AB7F0991AF0200EFF3"
+  },
+  {
+    "path": "src\\data\\samples\\Vault.sol",
+    "sha256": "5694357D436C003CFFDFD8B677A002F13380D6D285EFE4E72B82F908D7BB9877"
+  },
+  {
+    "path": "src\\pages\\DashboardPage.tsx",
+    "sha256": "DAA02B43DBC89EF558A58196DBDE1F7632229B60F42A32A0DFBCCE4173B42C8D"
+  },
+  {
+    "path": "src\\pages\\demo-login.css",
+    "sha256": "A1238A46C04A528C0252421F7EBBED394412D93E44D661D3184A793B5E240907"
+  },
+  {
+    "path": "src\\pages\\DemoLoginPage.test.tsx",
+    "sha256": "F51744AB621CD2DAC31DFC6CF02DEB4AA70E72A297DF580FD45C44B60A199D5D"
+  },
+  {
+    "path": "src\\pages\\DemoLoginPage.tsx",
+    "sha256": "AC235A2D14AB986FA4E5B422D85F84BF3BAD89F47D662F841EADE3369E244FBD"
+  },
+  {
+    "path": "src\\pages\\FindingDetailsPage.tsx",
+    "sha256": "1926E210AC293076A097FCFBFA8828032B640E335F7D6EC65FC16B8FCB3325FB"
+  },
+  {
+    "path": "src\\pages\\HistoryPage.tsx",
+    "sha256": "B2A1482E48389443A37A8A1AC3B77DE30DAA04F8202C2DD208FBE3583496EE23"
+  },
+  {
+    "path": "src\\pages\\NewScanPage.tsx",
+    "sha256": "0C182E3FAF2A021151F5B58F30836E3EB271470A70C84A3BF474B4F3F82B7549"
+  },
+  {
+    "path": "src\\pages\\NotFoundPage.tsx",
+    "sha256": "BA8FBA9B2CE0FAC1904BF88E0D4BAFDFB0C2F7F95680DC6AA81176ED55BD1449"
+  },
+  {
+    "path": "src\\pages\\pageUtils.ts",
+    "sha256": "752877CCF581C5C5D1F5E232CFAF60251D41C7C1517849BED45CE86548E94F37"
+  },
+  {
+    "path": "src\\pages\\public-entry.css",
+    "sha256": "AD849454EB112AAF799CE4CC6519AD773E6A0E8D379817B63844E6999D7AF403"
+  },
+  {
+    "path": "src\\pages\\PublicEntryPage.tsx",
+    "sha256": "8167C03B7B419FB857F712FC5968F05B450D93E07C29D480E57F3B2BA3380383"
+  },
+  {
+    "path": "src\\pages\\PublicInfoPage.tsx",
+    "sha256": "46B3F35AF470BFA5543978F5C766617B331AC591F3C7D5CB01F0E9D829079D05"
+  },
+  {
+    "path": "src\\pages\\ReportPage.tsx",
+    "sha256": "56D0AF601D9EFC24410D09F4E6AFD5488054C68C3AD3BBBAF14F66A2D0787C6C"
+  },
+  {
+    "path": "src\\pages\\ScanDetailsPage.tsx",
+    "sha256": "898CB3019A2284ABA1D2F99A0FF48F4ADDC3E83380EB20EBDFD16039DA7A1CB8"
+  },
+  {
+    "path": "src\\pages\\SettingsPage.tsx",
+    "sha256": "E5593964A70D2EC47A1E701AC7323FB5E3FEAD567D53DE1037B5B4819D36C701"
+  },
+  {
+    "path": "src\\services\\aggregateService.ts",
+    "sha256": "82F4928AFB5D125A4BE9546E610D800EA735E4381D56DD971F876AE88BBDF079"
+  },
+  {
+    "path": "src\\services\\consistencyCheck.ts",
+    "sha256": "613109B15D78CFE091178C8C2FB2DEF9BEE62F4206703A89A6A7B500967BC2BF"
+  },
+  {
+    "path": "src\\services\\findingService.ts",
+    "sha256": "544A5FE63F0FCA0179AFFE28CEEF474A300903110D8F9521EA86940A2BFFE61F"
+  },
+  {
+    "path": "src\\services\\reportService.ts",
+    "sha256": "CDCD82F313A825074FE71A12008AF0A315CBD8A16B02E17A189AE8756E4C4CE4"
+  },
+  {
+    "path": "src\\services\\scanService.ts",
+    "sha256": "FA645DB3D73A3F2B9E177FD1488EBE1750FB81C718A4CD879C9D4DBDC212DBCD"
+  },
+  {
+    "path": "src\\services\\settingsService.ts",
+    "sha256": "DF03886CA71CC51654B0EDE659059C150CE402C3A6ECD8D3961C37A8F9118C2D"
+  },
+  {
+    "path": "src\\services\\sourceService.ts",
+    "sha256": "E71ACA7A1FB5AC04F10C3DDE8EF855FA138077DC2FA04753780110CF43CEED50"
+  },
+  {
+    "path": "src\\state\\DemoAuthContext.ts",
+    "sha256": "697A6C56F678D91B490B3448657785AAD4C82C233A1F6495847844934AC8AD7B"
+  },
+  {
+    "path": "src\\state\\DemoAuthProvider.tsx",
+    "sha256": "016311CAD660D0844F725B95B15E5EC24C0CFAD007990B102B1ED372252A697D"
+  },
+  {
+    "path": "src\\state\\ThemeContext.ts",
+    "sha256": "4F041D60489F804070A33B8505534E57D884F214417189FD0BB481B6E0EF40E4"
+  },
+  {
+    "path": "src\\state\\ThemeProvider.tsx",
+    "sha256": "4F8F5D64D8D84ED411C414ED9217DDCBBFDAD26FED995AF889C0BA173927AB1F"
+  },
+  {
+    "path": "src\\state\\ToastContext.ts",
+    "sha256": "3FB58A8A732744BAB815B076891648B717E7B618851ED5F50CB19E51E90A112B"
+  },
+  {
+    "path": "src\\state\\ToastProvider.tsx",
+    "sha256": "316DBA216A05F183CFDA0D0CC45E37819BD3BCB7BFA65C70522DACBB8F2AC2D7"
+  },
+  {
+    "path": "src\\state\\useAppReducedMotion.test.tsx",
+    "sha256": "964962EAC70CEFDBBB9E91B4694950A48720E8D37B8A76CED6E37C4F7201EE0A"
+  },
+  {
+    "path": "src\\state\\useAppReducedMotion.ts",
+    "sha256": "4F2DCE47BF34F1D1E050AB05FCA25276B808143C2DEA27C5917E437BEA6933B2"
+  },
+  {
+    "path": "src\\state\\useDemoAuth.ts",
+    "sha256": "BDFBEC261EB66F7E733B1483905A1C8CED8F389EDE1BCD7F5BC5C43EEE1F8231"
+  },
+  {
+    "path": "src\\state\\useReducedMotion.ts",
+    "sha256": "2D548C4F1D01B8B7D32F37F4D0ACC4311F7B83E80203E83F49528FE5C8581C91"
+  },
+  {
+    "path": "src\\state\\useScans.ts",
+    "sha256": "19D04FA187100A51D550AB5F554BE575EE2AB1C36205954D3787C51D80A6FAC7"
+  },
+  {
+    "path": "src\\state\\useTheme.ts",
+    "sha256": "EB4572390FC463111E0396BB15DDACB19248BC97064C85A089FCBD14522A2F34"
+  },
+  {
+    "path": "src\\state\\useToast.ts",
+    "sha256": "F4FCBE61B9A5D7C170282971CCDD5E899416057A3BC41AD599E9D8A525701FDA"
+  },
+  {
+    "path": "src\\state\\useVisualFidelity.ts",
+    "sha256": "5EDA9812FF334EE385CABC4B453762B8463196692EBF3A35FE73640DDA3299C2"
+  },
+  {
+    "path": "src\\state\\useWebGLSupport.ts",
+    "sha256": "C4C133911E32B70FEA46B14CB904A17A6474C7D98297959F7C01407BE37C1288"
+  },
+  {
+    "path": "src\\types\\domain.ts",
+    "sha256": "CBD9AA2CDDCE4F295E762E6EAF10CD27C111AD6AF0C3E075C94D77F28A556A30"
+  },
+  {
+    "path": "src\\types\\navigation.ts",
+    "sha256": "AF42A99FE167A3FE93024DF2F1B96323F39B470B82175439A880958CE2E50B15"
+  },
+  {
+    "path": "src\\types\\theme.ts",
+    "sha256": "F2E4F20337DD1B482EB39CACC8FB083169A9E3760AEFD2D2B81D0022C047947D"
+  }
+]
