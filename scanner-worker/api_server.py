@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import threading
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
@@ -18,7 +19,24 @@ IDEMPOTENCY_NAMESPACE = uuid.UUID("96c8847a-6c12-45fc-b11e-f63f84c03ac2")
 MAX_REQUEST_BYTES = MAX_SOURCE_BYTES + 16_000
 IMPORT_PATTERN = re.compile(r"\bimport\s*(?:\"|'|\{|\*)")
 SCAN_ID_PATTERN = re.compile(r"^[0-9a-fA-F-]{36}$")
-ALLOWED_ORIGINS = {"http://localhost:5173", "http://localhost:5174", "http://127.0.0.1:5173", "http://127.0.0.1:5174"}
+DEFAULT_ALLOWED_ORIGINS = {"http://localhost:5173", "http://localhost:5174", "http://127.0.0.1:5173", "http://127.0.0.1:5174"}
+
+
+def parse_allowed_origins(value: str | None) -> set[str]:
+    origins = DEFAULT_ALLOWED_ORIGINS if value is None else {origin.strip() for origin in value.split(",") if origin.strip()}
+    if not origins:
+        raise ValueError("CONTRACTIQ_ALLOWED_ORIGINS must contain at least one exact origin.")
+    for origin in origins:
+        parsed = urlsplit(origin)
+        try:
+            parsed.port
+        except ValueError:
+            raise ValueError("Allowed origins must use a valid port number.") from None
+        local_http = parsed.scheme == "http" and parsed.hostname in {"localhost", "127.0.0.1"}
+        if (origin == "*" or not parsed.netloc or parsed.path or parsed.query or parsed.fragment
+                or not (parsed.scheme == "https" or local_http) or parsed.username or parsed.password):
+            raise ValueError("Allowed origins must be exact HTTPS origins; HTTP is allowed only for localhost development.")
+    return origins
 
 
 class ApiError(Exception):
@@ -185,8 +203,11 @@ class ScanApi:
     def list_findings(self, owner_id: str, scan_id: str) -> list[dict]:
         owner_id = _uuid(owner_id, "Verified owner ID")
         scan_id = _uuid(scan_id, "Scan ID")
-        if not self.gateway.get_scan(scan_id, owner_id):
+        scan = self.gateway.get_scan(scan_id, owner_id)
+        if not scan:
             raise ApiError(404, "not_found", "Scan was not found for this account.")
+        if scan.get("status") != "completed":
+            raise ApiError(409, "scan_not_completed", "Findings are available after scan completion.")
         return self.gateway.list_findings(scan_id, owner_id)
 
     def get_source(self, owner_id: str, scan_id: str) -> dict:
@@ -201,8 +222,12 @@ class ScanApi:
         return {"sourceCode": source, "sourceFilename": row.get("source_filename")}
 
 
-def create_server(gateway, queue_worker, port: int = 8765) -> ThreadingHTTPServer:
+def create_server(gateway, queue_worker, port: int = 8765, *, host: str = "127.0.0.1",
+                  allowed_origins: set[str] | None = None, max_concurrency: int = 16) -> ThreadingHTTPServer:
     api = ScanApi(gateway)
+    allowed = allowed_origins if allowed_origins is not None else parse_allowed_origins(None)
+    if not 1 <= max_concurrency <= 128:
+        raise ValueError("max_concurrency must be between 1 and 128.")
 
     class Handler(BaseHTTPRequestHandler):
         server_version = "ContractIQLocalAPI/1"
@@ -212,6 +237,10 @@ def create_server(gateway, queue_worker, port: int = 8765) -> ThreadingHTTPServe
             # Request paths/bodies and Authorization headers are deliberately not logged.
             return
 
+        def setup(self) -> None:
+            self.request.settimeout(15)
+            super().setup()
+
         def _send(self, status: int, body: Any) -> None:
             encoded = json.dumps(body, separators=(",", ":")).encode("utf-8")
             origin = self.headers.get("Origin")
@@ -220,7 +249,7 @@ def create_server(gateway, queue_worker, port: int = 8765) -> ThreadingHTTPServe
             self.send_header("Content-Length", str(len(encoded)))
             self.send_header("Cache-Control", "no-store")
             self.send_header("X-Content-Type-Options", "nosniff")
-            if origin in ALLOWED_ORIGINS:
+            if origin in allowed:
                 self.send_header("Access-Control-Allow-Origin", origin)
                 self.send_header("Vary", "Origin")
             self.end_headers()
@@ -295,8 +324,8 @@ def create_server(gateway, queue_worker, port: int = 8765) -> ThreadingHTTPServe
 
         def do_OPTIONS(self) -> None:
             origin = self.headers.get("Origin")
-            self.send_response(204 if origin in ALLOWED_ORIGINS else 403)
-            if origin in ALLOWED_ORIGINS:
+            self.send_response(204 if origin in allowed else 403)
+            if origin in allowed:
                 self.send_header("Access-Control-Allow-Origin", origin)
                 self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
                 self.send_header("Access-Control-Allow-Headers", "Authorization, Content-Type, Idempotency-Key")
@@ -310,12 +339,32 @@ def create_server(gateway, queue_worker, port: int = 8765) -> ThreadingHTTPServe
         def do_POST(self) -> None:
             self._handle("POST")
 
-    class LocalOnlyServer(ThreadingHTTPServer):
+    class BoundedApiServer(ThreadingHTTPServer):
         daemon_threads = True
 
         def __init__(self, address, handler):
+            self._request_slots = threading.BoundedSemaphore(max_concurrency)
             super().__init__(address, handler)
             self.queue_worker = queue_worker
 
-    return LocalOnlyServer(("127.0.0.1", port), Handler)
+        def process_request(self, request, client_address):
+            if not self._request_slots.acquire(blocking=False):
+                try:
+                    request.sendall(b"HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\nContent-Length: 0\r\n\r\n")
+                finally:
+                    self.shutdown_request(request)
+                return
+            try:
+                super().process_request(request, client_address)
+            except Exception:
+                self._request_slots.release()
+                raise
+
+        def process_request_thread(self, request, client_address):
+            try:
+                super().process_request_thread(request, client_address)
+            finally:
+                self._request_slots.release()
+
+    return BoundedApiServer((host, port), Handler)
 

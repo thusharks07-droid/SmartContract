@@ -31,7 +31,23 @@ export function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile
     const firstLink = sidebarRef.current?.querySelector<HTMLAnchorElement>('a[href]')
     firstLink?.focus()
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onCloseMobile()
+      if (event.key === 'Escape') {
+        onCloseMobile()
+        document.querySelector<HTMLButtonElement>('.topbar__mobile-menu')?.focus()
+        return
+      }
+      if (event.key !== 'Tab') return
+      const focusable = sidebarRef.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled])')
+      if (!focusable?.length) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
     }
     window.addEventListener('keydown', closeOnEscape)
     return () => window.removeEventListener('keydown', closeOnEscape)
@@ -56,7 +72,7 @@ export function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile
   return (
     <>
       {isMobile && mobileOpen && <button className="mobile-scrim" type="button" aria-label="Close navigation menu" onClick={onCloseMobile} />}
-      <aside ref={sidebarRef} className={`sidebar${compact ? ' sidebar--collapsed' : ''}${mobileOpen ? ' sidebar--mobile-open' : ''}`} aria-label="Main navigation" aria-hidden={isMobile && !mobileOpen}>
+      <aside id="app-navigation" ref={sidebarRef} className={`sidebar${compact ? ' sidebar--collapsed' : ''}${mobileOpen ? ' sidebar--mobile-open' : ''}`} aria-label="Main navigation" aria-hidden={isMobile && !mobileOpen}>
         <div className="sidebar__brand">
           <span className="brand-mark" aria-hidden="true"><Shield size={19} strokeWidth={2.2} /></span>
           {!compact && <span className="brand-name">Contract<span>IQ</span></span>}

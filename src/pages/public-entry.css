@@ -211,9 +211,9 @@
   .landing-brand__word { font-size: 13px; }
   .landing-brand__word small { font-size: 7px; }
   .landing-header__actions { gap: 8px; }
-  .landing-header__cta { min-height: 35px; gap: 5px; padding-inline: 9px; font-size: 9px; }
+  .landing-header__cta { min-height: 44px; gap: 5px; padding-inline: 9px; font-size: 9px; }
   .landing-header__cta svg { width: 13px; }
-  .landing-menu-toggle { width: 35px; height: 35px; }
+  .landing-menu-toggle { width: 44px; height: 44px; }
   .landing-hero__grid { gap: 32px; padding-block: 51px 38px; }
   .landing-eyebrow { margin-bottom: 15px; font-size: 8px; }
   .landing-hero h1 { font-size: clamp(39px, 11vw, 51px); }

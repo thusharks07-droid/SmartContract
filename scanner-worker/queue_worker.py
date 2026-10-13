@@ -65,7 +65,7 @@ class QueueWorker:
                     "rule_id": str(item.get("rule_id", "unknown"))[:160],
                     "title": str(item.get("title", "Slither detector result"))[:240],
                     "description": str(item.get("description", ""))[:8_000],
-                    "impact": str(item.get("severity", "informational")),
+                    "impact": str(item.get("impact", item.get("severity", "informational")))[:80],
                     "severity": item.get("severity", "informational"),
                     "confidence": item.get("confidence", "low"),
                     "category": str(item.get("category", "slither"))[:160],

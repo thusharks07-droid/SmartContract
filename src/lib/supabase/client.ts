@@ -6,7 +6,9 @@ function usable(value: string | undefined): value is string {
 }
 
 const url = import.meta.env.VITE_SUPABASE_URL?.trim() ?? ''
-const publicKey = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? import.meta.env.VITE_SUPABASE_ANON_KEY)?.trim() ?? ''
+const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+const legacyAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const publicKey = usable(publishableKey) ? publishableKey.trim() : usable(legacyAnonKey) ? legacyAnonKey.trim() : ''
 const validUrl = (() => {
   if (!usable(url)) return false
   try {

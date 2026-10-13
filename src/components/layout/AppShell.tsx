@@ -19,7 +19,7 @@ export function AppShell() {
     <div className="app-shell">
       <Sidebar collapsed={collapsed} onToggleCollapse={() => setCollapsed((value) => !value)} mobileOpen={mobileOpen} onCloseMobile={closeMobile} />
       <div className="app-shell__main">
-        <Topbar title={title} onOpenMobileNav={() => setMobileOpen(true)} />
+        <Topbar title={title} mobileNavOpen={mobileOpen} onOpenMobileNav={() => setMobileOpen(true)} />
         <main className="workspace" id="main-content">
           <div key={pathname} className={`route-content${reduceMotion ? ' route-content--reduced' : ''}`}>
             <Outlet />

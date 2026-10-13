@@ -26,6 +26,8 @@ Copy `.env.example` to `.env.local` and configure:
 - `VITE_SUPABASE_PUBLISHABLE_KEY`, preferred; or the legacy `VITE_SUPABASE_ANON_KEY`
 - `VITE_CONTRACTIQ_API_URL` (defaults to `http://127.0.0.1:8765` in development)
 
+Production builds require `VITE_CONTRACTIQ_API_URL` to be an HTTPS API origin; they do not fall back to localhost. See [DEPLOYMENT.md](DEPLOYMENT.md) and [deployment/README.md](deployment/README.md) for Vercel setup, the private API/reverse-proxy topology, exact CORS configuration, environment variables, and mobile verification steps.
+
 These browser-visible values are public. RLS must protect every exposed table. `.env.local` is ignored by Git. Never put a Supabase personal access token (PAT), secret/service-role key, database password, or analyzer secret in source code or any `VITE_` variable. A PAT is an account-management credential and is not used by this application.
 
 When configured, the account form uses Supabase Auth for email/password sign-in and signup. Passwords are passed only to Supabase Auth; ContractIQ does not log or store them. Supabase manages its auth session. **Continue as Demo** is separate and stores only `{ "mode": "demo", "displayName": "Demo User" }` in tab-scoped `sessionStorage` under `contractiq.demo-session` (or in memory if storage is unavailable). Signing out clears that marker. Demo remains usable without Supabase.

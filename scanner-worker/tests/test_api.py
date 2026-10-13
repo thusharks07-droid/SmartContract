@@ -15,7 +15,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from api_server import create_server  # noqa: E402
+from api_server import create_server, parse_allowed_origins  # noqa: E402
 from queue_worker import QueueWorker  # noqa: E402
 from supabase_gateway import SupabaseGateway  # noqa: E402
 
@@ -152,6 +152,18 @@ class ApiAndQueueTests(unittest.TestCase):
             with error:
                 return error.code, json.loads(error.read())
 
+    def request_bytes(self, method: str, path: str, data: bytes, *, token: str | None = "valid-a"):
+        headers = {"Content-Type": "application/json"}
+        if token is not None:
+            headers["Authorization"] = f"Bearer {token}"
+        request = urllib.request.Request(self.base + path, data=data, headers=headers, method=method)
+        try:
+            with urllib.request.urlopen(request, timeout=3) as response:
+                return response.status, json.loads(response.read())
+        except urllib.error.HTTPError as error:
+            with error:
+                return error.code, json.loads(error.read())
+
     def submit(self, *, token: str = "valid-a", key: str | None = None, payload: dict | None = None):
         return self.request("POST", "/api/scans", token=token, body=payload or self.payload(),
                             idempotency_key=key or str(uuid.uuid4()))
@@ -162,6 +174,38 @@ class ApiAndQueueTests(unittest.TestCase):
         status, _ = self.request("GET", "/api/scans", token=None)
         self.assertEqual(status, 401)
         self.assertEqual(self.gateway.scans, {})
+
+    def test_cors_allows_only_the_explicit_https_frontend_origin(self) -> None:
+        allowed = parse_allowed_origins("https://app.contractiq.example")
+        self.assertEqual(allowed, {"https://app.contractiq.example"})
+        self.assertRaises(ValueError, parse_allowed_origins, "*")
+        self.assertRaises(ValueError, parse_allowed_origins, "http://app.contractiq.example")
+        server = create_server(self.gateway, object(), port=0, allowed_origins=allowed)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            base = f"http://127.0.0.1:{server.server_address[1]}"
+            for origin, expected in (("https://app.contractiq.example", 204), ("https://attacker.example", 403)):
+                request = urllib.request.Request(base + "/api/scans", headers={
+                    "Origin": origin, "Access-Control-Request-Method": "GET",
+                }, method="OPTIONS")
+                try:
+                    with urllib.request.urlopen(request, timeout=3) as response:
+                        status = response.status
+                        allow_origin = response.headers.get("Access-Control-Allow-Origin")
+                except urllib.error.HTTPError as error:
+                    with error:
+                        status = error.code
+                        allow_origin = error.headers.get("Access-Control-Allow-Origin")
+                self.assertEqual(status, expected)
+                self.assertEqual(allow_origin, origin if expected == 204 else None)
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
+
+    def test_api_concurrency_limit_rejects_invalid_configuration(self) -> None:
+        self.assertRaises(ValueError, create_server, self.gateway, object(), 0, max_concurrency=129)
 
     def test_client_supplied_owner_and_result_fields_are_rejected(self) -> None:
         status, body = self.submit(payload=self.payload(user_id=USER_B, findings=[{"severity": "critical"}], status="completed"))
@@ -211,6 +255,34 @@ class ApiAndQueueTests(unittest.TestCase):
         self.assertEqual(status, 422)
         self.assertEqual(self.gateway.scans, {})
 
+    def test_unsupported_compiler_and_oversized_source_are_rejected(self) -> None:
+        status, body = self.submit(payload=self.payload(compilerVersion="latest"))
+        self.assertEqual(status, 422)
+        self.assertEqual(body["error"]["code"], "unsupported_compiler")
+        status, body = self.submit(payload=self.payload(sourceCode="x" * 500_001))
+        self.assertEqual(status, 413)
+        self.assertEqual(body["error"]["code"], "source_too_large")
+        self.assertEqual(self.gateway.scans, {})
+
+    def test_malformed_and_oversized_http_bodies_are_rejected(self) -> None:
+        status, body = self.request_bytes("POST", "/api/scans", b"{")
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "invalid_json")
+        status, body = self.request_bytes("POST", "/api/scans", b"x" * 516_001)
+        self.assertEqual(status, 413)
+        self.assertEqual(body["error"]["code"], "request_too_large")
+        self.assertEqual(self.gateway.scans, {})
+
+    def test_findings_are_hidden_until_scan_is_completed(self) -> None:
+        _, body = self.submit()
+        scan_id = body["scan"]["id"]
+        for state in ("queued", "running", "failed"):
+            self.gateway.scans[scan_id]["status"] = state
+            status, response = self.request("GET", f"/api/scans/{scan_id}/findings")
+            self.assertEqual(status, 409)
+            self.assertEqual(response["error"]["code"], "scan_not_completed")
+        self.assertEqual(self.gateway.findings, [])
+
     def test_worker_lifecycle_persists_findings_using_row_owner(self) -> None:
         key = str(uuid.uuid4())
         _, body = self.submit(key=key)
@@ -237,6 +309,18 @@ class ApiAndQueueTests(unittest.TestCase):
         self.assertEqual(replay_status, 200)
         self.assertTrue(replay_body["replayed"])
 
+    def test_empty_analysis_completes_and_returns_zero_findings(self) -> None:
+        _, body = self.submit()
+        scan_id = body["scan"]["id"]
+        worker = QueueWorker(self.gateway, lambda *_args: {
+            "analysis_version": "0.11.6", "summary": {"finding_count": 0}, "findings": [],
+        })
+        self.assertTrue(worker.run_once())
+        self.assertEqual(self.gateway.scans[scan_id]["status"], "completed")
+        status, response = self.request("GET", f"/api/scans/{scan_id}/findings")
+        self.assertEqual(status, 200)
+        self.assertEqual(response["findings"], [])
+
     def test_worker_failure_retries_once_then_uses_safe_terminal_error(self) -> None:
         _, body = self.submit()
         scan_id = body["scan"]["id"]
@@ -251,6 +335,36 @@ class ApiAndQueueTests(unittest.TestCase):
         self.assertEqual(self.gateway.scans[scan_id]["status"], "failed")
         self.assertEqual(self.gateway.scans[scan_id]["error_code"], "analyzer_error")
         self.assertNotIn("private detail", self.gateway.scans[scan_id]["error_message"])
+
+    def test_retry_after_completion_write_failure_replaces_findings_without_duplicates(self) -> None:
+        _, body = self.submit()
+        scan_id = body["scan"]["id"]
+        original_complete = self.gateway.complete_scan
+        attempts = 0
+
+        def fail_completion_once(row, started_at, result):
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                raise RuntimeError("temporary persistence failure")
+            return original_complete(row, started_at, result)
+
+        self.gateway.complete_scan = fail_completion_once
+
+        def analyzer(*_args):
+            return {
+                "analysis_version": "0.11.6", "summary": {"finding_count": 1},
+                "findings": [{"rule_id": "reentrancy-eth", "title": "Reentrancy", "severity": "high",
+                              "confidence": "medium", "line_start": 1, "line_end": 1}],
+            }
+
+        worker = QueueWorker(self.gateway, analyzer, max_attempts=2)
+        self.assertTrue(worker.run_once())
+        self.assertEqual(self.gateway.scans[scan_id]["status"], "queued")
+        self.assertTrue(worker.run_once())
+        self.assertEqual(self.gateway.scans[scan_id]["status"], "completed")
+        self.assertEqual(len(self.gateway.findings), 1)
+        self.assertEqual(self.gateway.findings[0]["scan_id"], scan_id)
 
 
 class SupabaseAuthAdapterTests(unittest.TestCase):
@@ -268,6 +382,31 @@ class SupabaseAuthAdapterTests(unittest.TestCase):
         self.assertTrue(captured[0].full_url.endswith("/auth/v1/user"))
         self.assertEqual(captured[0].get_header("Authorization"), "Bearer opaque-access-token-test")
         self.assertEqual(captured[0].get_header("Apikey"), "public-placeholder")
+
+
+class SupabaseRecoveryTests(unittest.TestCase):
+    def test_stale_jobs_are_requeued_once_or_failed_at_attempt_limit(self) -> None:
+        gateway = SupabaseGateway("https://example.supabase.co", "public-placeholder", "server-placeholder")
+        stale = [
+            {"id": str(uuid.uuid4()), "user_id": USER_A, "started_at": "2026-10-12T00:00:00Z",
+             "options": {"contractiqWorker": {"attempt": 1}}},
+            {"id": str(uuid.uuid4()), "user_id": USER_B, "started_at": "2026-10-12T00:00:00Z",
+             "options": {"contractiqWorker": {"attempt": 2}}},
+        ]
+        with patch.object(gateway, "_rest", side_effect=[stale, [{"id": stale[0]["id"]}], [{"id": stale[1]["id"]}]]) as rest:
+            recovered = gateway.recover_stale("2026-10-12T00:05:00Z", max_attempts=2)
+
+        self.assertEqual(recovered, 2)
+        self.assertEqual(rest.call_count, 3)
+        retry_call = rest.call_args_list[1]
+        failure_call = rest.call_args_list[2]
+        self.assertEqual(retry_call.args[1], "PATCH")
+        self.assertEqual(retry_call.args[2]["status"], "queued")
+        self.assertEqual(failure_call.args[1], "PATCH")
+        self.assertEqual(failure_call.args[2]["status"], "failed")
+        self.assertEqual(failure_call.args[2]["error_code"], "worker_timeout")
+        self.assertIn("status=eq.running", retry_call.args[0])
+        self.assertIn("started_at=eq.2026-10-12T00%3A00%3A00Z", retry_call.args[0])
 
 
 if __name__ == "__main__":

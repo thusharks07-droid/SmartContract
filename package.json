@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "check:consistency": "node scripts/check-data-consistency.mjs",
     "preview": "vite preview",
-    "check:browser": "node scripts/validate-part7-browser.mjs"
+    "check:browser": "node scripts/validate-part7-browser.mjs",
+    "check:responsive": "node scripts/validate-responsive-browser.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

@@ -10,7 +10,7 @@ const scan = {
 } as const
 const jsonResponse = (body: unknown, status = 200) => ({ ok: status >= 200 && status < 300, status, json: async () => body })
 
-afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers() })
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.useRealTimers() })
 
 describe('local scanner API service', () => {
   it('submits with bearer auth and idempotency key without a client owner ID', async () => {
@@ -28,7 +28,7 @@ describe('local scanner API service', () => {
   })
 
   it('reads scans, details, findings, and source through the matching endpoints', async () => {
-    const finding = { id: 'finding-1', rule_id: 'reentrancy-eth', severity: 'high' }
+    const finding = { id: 'finding-1', scan_id: scan.id, rule_id: 'reentrancy-eth', severity: 'high' }
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(jsonResponse({ scans: [scan] }))
       .mockResolvedValueOnce(jsonResponse({ scan }))
@@ -45,6 +45,39 @@ describe('local scanner API service', () => {
       `http://127.0.0.1:8765/api/scans/${scan.id}/findings`,
       `http://127.0.0.1:8765/api/scans/${scan.id}/source`,
     ])
+  })
+
+  it('uses the configured HTTPS API URL in a production build configuration', async () => {
+    vi.stubEnv('VITE_CONTRACTIQ_API_URL', 'https://api.contractiq.example/')
+    vi.resetModules()
+    const { localScanApi: productionApi } = await import('./localScanApi')
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ scans: [] }))
+    vi.stubGlobal('fetch', fetchMock)
+    await productionApi.listScans('token')
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('https://api.contractiq.example/api/scans')
+  })
+
+  it('refuses an HTTP API URL in production without sending a request', async () => {
+    vi.stubEnv('DEV', false)
+    vi.stubEnv('VITE_CONTRACTIQ_API_URL', 'http://api.contractiq.example')
+    vi.resetModules()
+    const { localScanApi: productionApi } = await import('./localScanApi')
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(productionApi.listScans('token')).rejects.toMatchObject({ code: 'insecure_api_url' })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('rejects malformed response collections and finding rows instead of treating them as empty', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse({ scans: null })))
+    await expect(localScanApi.listScans('token')).rejects.toMatchObject({ code: 'invalid_response' })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse({ findings: [{ id: 'f', scan_id: 'other-scan' }] })))
+    await expect(localScanApi.listFindings(scan.id, 'token')).rejects.toMatchObject({ code: 'invalid_response' })
+  })
+
+  it('rejects unknown scan states rather than presenting them as a known lifecycle state', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(jsonResponse({ scans: [{ ...scan, status: 'finished' }] })))
+    await expect(localScanApi.listScans('token')).rejects.toMatchObject({ code: 'invalid_response' })
   })
 
   it('handles expired authentication without exposing token content', async () => {

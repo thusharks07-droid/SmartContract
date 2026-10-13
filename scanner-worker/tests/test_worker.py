@@ -66,12 +66,25 @@ class WorkerValidationTests(unittest.TestCase):
         }]}}
         result = analyzer.normalize(raw, source, "a" * 64)
         self.assertEqual(result["status"], "completed_with_findings")
+        self.assertEqual(result["findings"][0]["impact"], "high")
         self.assertEqual(result["findings"][0]["severity"], "high")
         self.assertEqual(result["findings"][0]["line_start"], 3)
         self.assertEqual(result["findings"][0]["verification"]["status"], "not_verified")
         self.assertIn("no completeness", result["summary"]["disclaimer"])
         self.assertIn("contract.sol", result["findings"][0]["description"])
         self.assertNotIn("../../input", result["findings"][0]["description"])
+
+    def test_optimization_impact_is_preserved_and_mapped_explicitly(self) -> None:
+        raw = {"results": {"detectors": [{"check": "gas", "impact": "Optimization", "confidence": "High"}]}}
+        finding = analyzer.normalize(raw, "contract A {}", "c" * 64)["findings"][0]
+        self.assertEqual(finding["impact"], "optimization")
+        self.assertEqual(finding["severity"], "informational")
+        self.assertEqual(finding["confidence"], "high")
+
+    def test_unknown_slither_classification_is_not_silently_remapped(self) -> None:
+        raw = {"results": {"detectors": [{"check": "custom", "impact": "Urgent", "confidence": "Medium"}]}}
+        with self.assertRaisesRegex(ValueError, "unsupported impact or confidence"):
+            analyzer.normalize(raw, "contract A {}", "d" * 64)
 
     def test_slither_success_without_detectors_is_empty_not_an_error(self) -> None:
         result = analyzer.normalize({"results": {}}, "pragma solidity 0.8.24; contract A {}", "b" * 64)

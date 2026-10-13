@@ -28,7 +28,7 @@ export type ApiFinding = {
   title: string | null
   description: string | null
   impact: string | null
-  severity: Severity | null
+  severity: string | null
   confidence: string | null
   category: string | null
   source_path: string | null
@@ -52,6 +52,52 @@ export type SubmitScanInput = {
 }
 
 type ErrorBody = { error?: { code?: unknown; message?: unknown } }
+const scanStatuses: ScanStatus[] = ['queued', 'running', 'completed', 'failed', 'cancelled']
+
+function invalidResponse(): never {
+  throw new ScanApiError('invalid_response', 'The local scan API returned data in an unexpected format.')
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return invalidResponse()
+  return value as Record<string, unknown>
+}
+
+function nullableString(value: unknown): string | null {
+  if (value === null || value === undefined) return null
+  if (typeof value !== 'string') return invalidResponse()
+  return value
+}
+
+function parseScan(value: unknown): ApiScan {
+  const row = asRecord(value)
+  if (typeof row.id !== 'string' || typeof row.contractName !== 'string' || typeof row.compilerVersion !== 'string'
+      || typeof row.sourceHash !== 'string' || typeof row.createdAt !== 'string' || typeof row.updatedAt !== 'string'
+      || !scanStatuses.includes(row.status as ScanStatus) || (row.inputType !== 'upload' && row.inputType !== 'paste')) return invalidResponse()
+  return {
+    id: row.id, contractName: row.contractName, compilerVersion: row.compilerVersion, sourceHash: row.sourceHash,
+    createdAt: row.createdAt, updatedAt: row.updatedAt, status: row.status as ScanStatus,
+    inputType: row.inputType, sourceFilename: nullableString(row.sourceFilename), summary: asRecord(row.summary ?? {}),
+    errorCode: nullableString(row.errorCode), errorMessage: nullableString(row.errorMessage),
+    analysisEngine: nullableString(row.analysisEngine), analysisVersion: nullableString(row.analysisVersion),
+    startedAt: nullableString(row.startedAt), completedAt: nullableString(row.completedAt),
+  }
+}
+
+function parseFinding(value: unknown): ApiFinding {
+  const row = asRecord(value)
+  if (typeof row.id !== 'string' || typeof row.scan_id !== 'string') return invalidResponse()
+  const line = (value: unknown) => value === null || value === undefined ? null : Number.isInteger(value) && Number(value) > 0 ? Number(value) : invalidResponse()
+  return {
+    id: row.id, scan_id: row.scan_id, user_id: nullableString(row.user_id) ?? '',
+    rule_id: nullableString(row.rule_id), title: nullableString(row.title), description: nullableString(row.description),
+    impact: nullableString(row.impact), severity: nullableString(row.severity), confidence: nullableString(row.confidence),
+    category: nullableString(row.category), source_path: nullableString(row.source_path),
+    line_start: line(row.line_start), line_end: line(row.line_end), code_excerpt: nullableString(row.code_excerpt),
+    recommendation: nullableString(row.recommendation), evidence: row.evidence ?? null, verification: row.verification ?? null,
+    created_at: nullableString(row.created_at),
+  }
+}
 
 export class ScanApiError extends Error {
   readonly code: string
@@ -83,6 +129,9 @@ export function makeIdempotencyKey(): string {
 
 function baseUrl(): string {
   if (!apiBase) throw new ScanApiError('not_configured', 'The local scan API URL is not configured for this build.')
+  if (!import.meta.env.DEV && !apiBase.startsWith('https://')) {
+    throw new ScanApiError('insecure_api_url', 'Production account scans require an HTTPS API URL.')
+  }
   return apiBase
 }
 
@@ -126,25 +175,33 @@ async function request<T>(path: string, accessToken: string, init: RequestInit =
 
 export const localScanApi = {
   async submit(input: SubmitScanInput, accessToken: string, idempotencyKey: string): Promise<{ scan: ApiScan; replayed: boolean }> {
-    return request('/api/scans', accessToken, {
+    const result = asRecord(await request<unknown>('/api/scans', accessToken, {
       method: 'POST',
       headers: { 'Idempotency-Key': idempotencyKey },
       body: JSON.stringify(input),
-    })
+    }))
+    if (typeof result.replayed !== 'boolean') return invalidResponse()
+    return { scan: parseScan(result.scan), replayed: result.replayed }
   },
   async listScans(accessToken: string): Promise<ApiScan[]> {
-    const result = await request<{ scans: ApiScan[] }>('/api/scans', accessToken)
-    return result.scans
+    const result = asRecord(await request<unknown>('/api/scans', accessToken))
+    if (!Array.isArray(result.scans)) return invalidResponse()
+    return result.scans.map(parseScan)
   },
   async getScan(scanId: string, accessToken: string): Promise<ApiScan> {
-    const result = await request<{ scan: ApiScan }>(`/api/scans/${encodeURIComponent(scanId)}`, accessToken)
-    return result.scan
+    const result = asRecord(await request<unknown>(`/api/scans/${encodeURIComponent(scanId)}`, accessToken))
+    return parseScan(result.scan)
   },
   async listFindings(scanId: string, accessToken: string): Promise<ApiFinding[]> {
-    const result = await request<{ findings: ApiFinding[] }>(`/api/scans/${encodeURIComponent(scanId)}/findings`, accessToken)
-    return result.findings
+    const result = asRecord(await request<unknown>(`/api/scans/${encodeURIComponent(scanId)}/findings`, accessToken))
+    if (!Array.isArray(result.findings)) return invalidResponse()
+    const findings = result.findings.map(parseFinding)
+    if (findings.some((finding) => finding.scan_id !== scanId)) return invalidResponse()
+    return findings
   },
   async getSource(scanId: string, accessToken: string): Promise<ApiScanSource> {
-    return request<ApiScanSource>(`/api/scans/${encodeURIComponent(scanId)}/source`, accessToken)
+    const result = asRecord(await request<unknown>(`/api/scans/${encodeURIComponent(scanId)}/source`, accessToken))
+    if (typeof result.sourceCode !== 'string') return invalidResponse()
+    return { sourceCode: result.sourceCode, sourceFilename: nullableString(result.sourceFilename) }
   },
 }

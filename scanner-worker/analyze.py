@@ -23,8 +23,10 @@ def normalize(slither_result: dict, source: str, source_hash: str) -> dict:
     raw_findings = slither_result.get("results", {}).get("detectors", [])
     findings = []
     for index, item in enumerate(raw_findings):
-        impact = str(item.get("impact", "Informational")).lower()
-        confidence = str(item.get("confidence", "Low")).lower()
+        impact = str(item.get("impact", "Informational")).strip().lower()
+        confidence = str(item.get("confidence", "Low")).strip().lower()
+        if impact not in IMPACT or confidence not in CONFIDENCE:
+            raise ValueError("Slither returned an unsupported impact or confidence classification.")
         elements = item.get("elements") or []
         mapping = elements[0].get("source_mapping", {}) if elements else {}
         line_numbers = mapping.get("lines") or []
@@ -49,6 +51,7 @@ def normalize(slither_result: dict, source: str, source_hash: str) -> dict:
             "rule_id": str(item.get("check", "unknown")),
             "title": str(item.get("check", "Slither detector result")).replace("-", " ").title(),
             "description": description[:8_000],
+            "impact": impact,
             "severity": IMPACT.get(impact, "informational"),
             "confidence": CONFIDENCE.get(confidence, "low"),
             "category": str(item.get("check", "unknown")),

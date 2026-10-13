@@ -19,6 +19,8 @@ class UpstreamError(Exception):
 
 
 class SupabaseGateway:
+    PAGE_SIZE = 200
+
     def __init__(self, project_url: str, public_key: str, service_role_key: str, timeout: float = 10) -> None:
         self.project_url = project_url.rstrip("/")
         self.public_key = public_key
@@ -84,19 +86,33 @@ class SupabaseGateway:
         return rows[0] if rows else None
 
     def list_scans(self, user_id: str) -> list[dict]:
-        query = urllib.parse.urlencode({
-            "user_id": f"eq.{user_id}",
-            "select": "id,contract_name,source_filename,input_type,compiler_version,status,summary,error_code,error_message,created_at,updated_at,started_at,completed_at,analysis_engine,analysis_version",
-            "order": "created_at.desc", "limit": "250",
-        })
-        return self._rest(f"contractiq_scans?{query}")
+        rows = []
+        offset = 0
+        while True:
+            query = urllib.parse.urlencode({
+                "user_id": f"eq.{user_id}",
+                "select": "id,contract_name,source_filename,input_type,compiler_version,status,summary,error_code,error_message,created_at,updated_at,started_at,completed_at,analysis_engine,analysis_version",
+                "order": "created_at.desc,id.desc", "limit": str(self.PAGE_SIZE), "offset": str(offset),
+            })
+            page = self._rest(f"contractiq_scans?{query}")
+            rows.extend(page)
+            if len(page) < self.PAGE_SIZE:
+                return rows
+            offset += self.PAGE_SIZE
 
     def list_findings(self, scan_id: str, user_id: str) -> list[dict]:
-        query = urllib.parse.urlencode({
-            "scan_id": f"eq.{scan_id}", "user_id": f"eq.{user_id}", "select": "*",
-            "order": "created_at.asc", "limit": "250",
-        })
-        return self._rest(f"contractiq_findings?{query}")
+        rows = []
+        offset = 0
+        while True:
+            query = urllib.parse.urlencode({
+                "scan_id": f"eq.{scan_id}", "user_id": f"eq.{user_id}", "select": "*",
+                "order": "created_at.asc,id.asc", "limit": str(self.PAGE_SIZE), "offset": str(offset),
+            })
+            page = self._rest(f"contractiq_findings?{query}")
+            rows.extend(page)
+            if len(page) < self.PAGE_SIZE:
+                return rows
+            offset += self.PAGE_SIZE
 
     def insert_queued_scan(self, row: dict) -> dict | None:
         rows = self._rest(

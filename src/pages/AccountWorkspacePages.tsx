@@ -28,20 +28,24 @@ function workerFailureText(scan: ApiScan): string {
 
 function useScans() {
   const { accessToken } = useWorkspaceMode()
-  const [scans, setScans] = useState<ApiScan[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const requestGeneration = useRef(0)
+  const [scanState, setScanState] = useState<{ token: string | null; scans: ApiScan[]; loading: boolean; error: string }>({ token: null, scans: [], loading: true, error: '' })
+  const isCurrent = scanState.token === accessToken
+  const scans = useMemo(() => isCurrent ? scanState.scans : [], [isCurrent, scanState.scans])
+  const loading = !isCurrent || scanState.loading
+  const error = isCurrent ? scanState.error : ''
   const refresh = useCallback(async () => {
-    if (!accessToken) { setError('Your account session is unavailable. Sign in again.'); setLoading(false); return }
+    if (!accessToken) { setScanState({ token: null, scans: [], loading: false, error: 'Your account session is unavailable. Sign in again.' }); return }
+    const generation = requestGeneration.current
     try {
       const nextScans = await localScanApi.listScans(accessToken)
-      setScans((current) => JSON.stringify(current) === JSON.stringify(nextScans) ? current : nextScans)
-      setError('')
+      if (generation !== requestGeneration.current) return
+      setScanState({ token: accessToken, scans: nextScans, loading: false, error: '' })
     }
-    catch (reason) { setError(errorText(reason)) }
-    finally { setLoading(false) }
+    catch (reason) { if (generation === requestGeneration.current) setScanState({ token: accessToken, scans: [], loading: false, error: errorText(reason) }) }
   }, [accessToken])
   useEffect(() => {
+    requestGeneration.current += 1
     const timer = window.setTimeout(() => { void refresh() }, 0)
     return () => window.clearTimeout(timer)
   }, [refresh])
@@ -60,7 +64,9 @@ function AccountStatus({ status }: { status: ApiScan['status'] }) {
 }
 
 function FindingSeverity({ severity }: { severity: ApiFinding['severity'] }) {
-  return severity ? <SeverityBadge severity={severity} /> : <span className="muted-cell">Severity not provided</span>
+  if (!severity) return <span className="muted-cell">Severity not provided</span>
+  if (severityOrder.includes(severity as Severity)) return <SeverityBadge severity={severity as Severity} />
+  return <span className="badge" aria-label={`Unrecognized severity returned: ${severity}`}>Severity returned: {severity}</span>
 }
 
 function formatDate(value: string | null | undefined) {
@@ -76,20 +82,23 @@ function ScanError({ message, retry }: { message: string; retry?: () => void }) 
 export function AccountDashboardPage() {
   const { accessToken } = useWorkspaceMode()
   const { scans, loading, error } = useScans()
-  const [findings, setFindings] = useState<ApiFinding[]>([])
-  const [findingError, setFindingError] = useState('')
+  const scanKey = scans.filter((scan) => scan.status === 'completed').map((scan) => scan.id).join('|')
+  const [findingState, setFindingState] = useState<{ token: string | null; scanKey: string; findings: ApiFinding[]; error: string }>({ token: null, scanKey: '', findings: [], error: '' })
+  const findingStateIsCurrent = findingState.token === accessToken && findingState.scanKey === scanKey
+  const findings = useMemo(() => findingStateIsCurrent ? findingState.findings : [], [findingStateIsCurrent, findingState.findings])
+  const findingError = findingStateIsCurrent ? findingState.error : ''
   useEffect(() => {
     let active = true
-    const completed = scans.filter((scan) => scan.status === 'completed')
-    if (!completed.length || !accessToken) {
-      const timer = window.setTimeout(() => setFindings([]), 0)
+    if (!scanKey || !accessToken) {
+      const timer = window.setTimeout(() => setFindingState({ token: accessToken, scanKey, findings: [], error: '' }), 0)
       return () => { active = false; window.clearTimeout(timer) }
     }
-    void Promise.all(completed.map((scan) => localScanApi.listFindings(scan.id, accessToken))).then((groups) => {
-      if (active) { setFindings(groups.flat()); setFindingError('') }
-    }).catch((reason: unknown) => { if (active) setFindingError(errorText(reason)) })
+    const scanIds = scanKey.split('|')
+    void Promise.all(scanIds.map((scanId) => localScanApi.listFindings(scanId, accessToken))).then((groups) => {
+      if (active) setFindingState({ token: accessToken, scanKey, findings: groups.flat(), error: '' })
+    }).catch((reason: unknown) => { if (active) setFindingState({ token: accessToken, scanKey, findings: [], error: errorText(reason) }) })
     return () => { active = false }
-  }, [accessToken, scans])
+  }, [accessToken, scanKey])
   const counts = useMemo(() => Object.fromEntries(severityOrder.map((severity) => [severity, findings.filter((finding) => finding.severity === severity).length])) as Record<Severity, number>, [findings])
   const completed = scans.filter((scan) => scan.status === 'completed').length
   const columns: DataColumn<ApiScan>[] = [
@@ -118,20 +127,23 @@ export function AccountHistoryPage() {
   const [status, setStatus] = useState('all')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
-  const [findingCounts, setFindingCounts] = useState<Record<string, number>>({})
-  const [findingCountError, setFindingCountError] = useState('')
+  const scanKey = scans.filter((scan) => scan.status === 'completed').map((scan) => scan.id).join('|')
+  const [findingCountState, setFindingCountState] = useState<{ token: string | null; scanKey: string; counts: Record<string, number>; error: string }>({ token: null, scanKey: '', counts: {}, error: '' })
+  const findingCountStateIsCurrent = findingCountState.token === accessToken && findingCountState.scanKey === scanKey
+  const findingCounts = findingCountStateIsCurrent ? findingCountState.counts : {}
+  const findingCountError = findingCountStateIsCurrent ? findingCountState.error : ''
   useEffect(() => {
     let active = true
     if (!accessToken) {
-      const timer = window.setTimeout(() => setFindingCounts({}), 0)
+      const timer = window.setTimeout(() => setFindingCountState({ token: accessToken, scanKey, counts: {}, error: '' }), 0)
       return () => { active = false; window.clearTimeout(timer) }
     }
-    const completed = scans.filter((scan) => scan.status === 'completed')
-    void Promise.all(completed.map((scan) => localScanApi.listFindings(scan.id, accessToken))).then((groups) => {
-      if (active) { setFindingCounts(Object.fromEntries(completed.map((scan, index) => [scan.id, groups[index]?.length ?? 0]))); setFindingCountError('') }
-    }).catch((reason: unknown) => { if (active) { setFindingCounts({}); setFindingCountError(errorText(reason)) } })
+    const scanIds = scanKey ? scanKey.split('|') : []
+    void Promise.all(scanIds.map((scanId) => localScanApi.listFindings(scanId, accessToken))).then((groups) => {
+      if (active) setFindingCountState({ token: accessToken, scanKey, counts: Object.fromEntries(scanIds.map((scanId, index) => [scanId, groups[index]?.length ?? 0])), error: '' })
+    }).catch((reason: unknown) => { if (active) setFindingCountState({ token: accessToken, scanKey, counts: {}, error: errorText(reason) }) })
     return () => { active = false }
-  }, [accessToken, scans])
+  }, [accessToken, scanKey])
   const filtered = scans.filter((scan) => {
     const date = scan.createdAt.slice(0, 10)
     return (!query || `${scan.contractName} ${scan.id} ${scan.sourceFilename ?? ''}`.toLowerCase().includes(query.toLowerCase()))
@@ -206,10 +218,10 @@ export function AccountFindingDetailsPage() {
   if (!scan || !finding) return <div className="page-stack"><PageHeader title="Finding not found" eyebrow="ACCOUNT FINDING" description="This finding is not part of the requested account scan." /><EmptyState title="No matching finding" description="The finding ID may be invalid or belong to a different scan." action={<Link className="button button--primary" to={`/app/scans/${scanId}`}>Back to scan details</Link>} /></div>
   const start = finding.line_start
   const lines = source.split(/\r?\n/)
-  const excerpt = start && finding.line_end ? lines.slice(Math.max(0, start - 4), Math.min(lines.length, finding.line_end + 3)) : []
+  const excerpt = start ? lines.slice(Math.max(0, start - 4), Math.min(lines.length, (finding.line_end ?? start) + 3)) : []
   const excerptStart = start ? Math.max(1, start - 3) : 1
   const evidence = finding.evidence && typeof finding.evidence === 'object' ? finding.evidence as { elements?: unknown[] } : null
-  return <div className="page-stack finding-detail-page"><PageHeader title={finding.title ?? finding.rule_id ?? 'Static-analysis finding'} eyebrow="FINDING DETAILS · STATIC ANALYSIS" description={`${finding.id} · ${scan.contractName}`} actions={<>{finding.severity && <SeverityBadge severity={finding.severity} />}<Link className="button button--secondary" to={`/app/scans/${scan.id}`}>Scan details</Link></>} /><p className="notice-banner" role="note">Slither static-analysis output. This result is not independently verified and does not guarantee detection of all vulnerabilities.</p><div className="finding-meta-strip">{finding.rule_id && <span><strong>Detector ID</strong>{finding.rule_id}</span>}{finding.category && <span><strong>Category</strong>{finding.category}</span>}{finding.confidence && <span><strong>Confidence</strong>{finding.confidence}</span>}{finding.source_path && <span><strong>Source</strong>{finding.source_path}{start ? `:${start}${finding.line_end && finding.line_end !== start ? `–${finding.line_end}` : ''}` : ''}</span>}</div><div className="finding-detail-layout"><div className="finding-detail-main">{finding.description && <section className="panel finding-content-section"><p className="eyebrow">DESCRIPTION</p><h2>Detector description</h2><p>{finding.description}</p></section>}{excerpt.length > 0 && <section ref={sourceSectionRef} className="panel finding-content-section" aria-labelledby="account-source-heading" tabIndex={-1}><p className="eyebrow">SOURCE LOCATION</p><h2 id="account-source-heading">Affected source excerpt</h2><pre className="finding-code-excerpt" aria-label="Source excerpt">{excerpt.map((line, index) => <span key={index} className={excerptStart + index === start ? 'finding-code-line finding-code-line--active' : 'finding-code-line'}><span className="finding-code-line__number">{excerptStart + index}</span><code>{line || ' '}</code></span>)}</pre></section>}{finding.code_excerpt && <section className="panel finding-content-section"><p className="eyebrow">WORKER EXCERPT</p><h2>Code excerpt</h2><pre className="report-code"><code>{finding.code_excerpt}</code></pre></section>}{finding.recommendation && <section className="panel remediation-panel"><p className="eyebrow">RECOMMENDATION</p><h2>Suggested review</h2><p>{finding.recommendation}</p><p className="subtle-copy">This is analyzer-provided guidance, not a verified patch. Review the full contract and tests.</p></section>}{finding.impact && <section className="panel finding-content-section"><p className="eyebrow">IMPACT</p><h2>Impact field</h2><p>{finding.impact}</p></section>}{evidence?.elements && <section className="panel finding-content-section"><p className="eyebrow">EVIDENCE</p><h2>Analyzer evidence</h2><pre className="report-code"><code>{JSON.stringify(evidence, null, 2)}</code></pre></section>}</div><aside className="finding-detail-aside"><div className="panel aside-summary"><p className="eyebrow">RECORD</p><dl><div><dt>Finding ID</dt><dd><code>{finding.id}</code></dd></div><div><dt>Detector</dt><dd>{finding.rule_id ?? 'Not provided'}</dd></div><div><dt>Scan</dt><dd><Link to={`/app/scans/${scan.id}`}>{scan.id}</Link></dd></div><div><dt>Worker verification</dt><dd>Not independently verified</dd></div></dl></div></aside></div></div>
+  return <div className="page-stack finding-detail-page"><PageHeader title={finding.title ?? finding.rule_id ?? 'Static-analysis finding'} eyebrow="FINDING DETAILS · STATIC ANALYSIS" description={`${finding.id} · ${scan.contractName}`} actions={<><FindingSeverity severity={finding.severity} /><Link className="button button--secondary" to={`/app/scans/${scan.id}`}>Scan details</Link></>} /><p className="notice-banner" role="note">Slither static-analysis output. This result is not independently verified and does not guarantee detection of all vulnerabilities.</p><div className="finding-meta-strip">{finding.rule_id && <span><strong>Detector ID</strong>{finding.rule_id}</span>}{finding.category && <span><strong>Category</strong>{finding.category}</span>}{finding.confidence && <span><strong>Confidence</strong>{finding.confidence}</span>}{finding.source_path && <span><strong>Source</strong>{finding.source_path}{start ? `:${start}${finding.line_end && finding.line_end !== start ? `–${finding.line_end}` : ''}` : ''}</span>}</div><div className="finding-detail-layout"><div className="finding-detail-main">{finding.description && <section className="panel finding-content-section"><p className="eyebrow">DESCRIPTION</p><h2>Detector description</h2><p>{finding.description}</p></section>}{excerpt.length > 0 && <section ref={sourceSectionRef} className="panel finding-content-section" aria-labelledby="account-source-heading" tabIndex={-1}><p className="eyebrow">SOURCE LOCATION</p><h2 id="account-source-heading">Affected source excerpt</h2><pre className="finding-code-excerpt" aria-label="Source excerpt">{excerpt.map((line, index) => <span key={index} className={excerptStart + index === start ? 'finding-code-line finding-code-line--active' : 'finding-code-line'}><span className="finding-code-line__number">{excerptStart + index}</span><code>{line || ' '}</code></span>)}</pre></section>}{finding.code_excerpt && <section className="panel finding-content-section"><p className="eyebrow">WORKER EXCERPT</p><h2>Code excerpt</h2><pre className="report-code"><code>{finding.code_excerpt}</code></pre></section>}{finding.recommendation && <section className="panel remediation-panel"><p className="eyebrow">RECOMMENDATION</p><h2>Suggested review</h2><p>{finding.recommendation}</p><p className="subtle-copy">This is analyzer-provided guidance, not a verified patch. Review the full contract and tests.</p></section>}{finding.impact && <section className="panel finding-content-section"><p className="eyebrow">IMPACT</p><h2>Impact field</h2><p>{finding.impact}</p></section>}{evidence?.elements && <section className="panel finding-content-section"><p className="eyebrow">EVIDENCE</p><h2>Analyzer evidence</h2><pre className="report-code"><code>{JSON.stringify(evidence, null, 2)}</code></pre></section>}</div><aside className="finding-detail-aside"><div className="panel aside-summary"><p className="eyebrow">RECORD</p><dl><div><dt>Finding ID</dt><dd><code>{finding.id}</code></dd></div><div><dt>Detector</dt><dd>{finding.rule_id ?? 'Not provided'}</dd></div><div><dt>Scan</dt><dd><Link to={`/app/scans/${scan.id}`}>{scan.id}</Link></dd></div><div><dt>Worker verification</dt><dd>Not independently verified</dd></div></dl></div></aside></div></div>
 }
 
 export function AccountReportPage() {
@@ -220,6 +232,6 @@ export function AccountReportPage() {
   if (!scan) return <div className="page-stack"><PageHeader title="Report not found" eyebrow="ACCOUNT REPORT" /><EmptyState title="No matching scan" description="The scan is invalid or not available to this account." action={<Link className="button button--primary" to="/app/scans">Back to history</Link>} /></div>
   if (scan.status !== 'completed') return <div className="page-stack"><PageHeader title="Report not ready" eyebrow="ACCOUNT REPORT" description={`Current scan status: ${scan.status}.`} actions={<Link className="button button--secondary" to={`/app/scans/${scan.id}`}>Back to scan details</Link>} /><p className="notice-banner" role="status">A report is available only after the backend confirms scan completion.</p>{scan.status === 'failed' && <ScanError message={scan.errorMessage ?? 'The worker marked this scan as failed.'} />}</div>
   const counts = Object.fromEntries(severityOrder.map((severity) => [severity, findings.filter((finding) => finding.severity === severity).length])) as Record<Severity, number>
-  return <div className="page-stack report-page"><PageHeader title="Analysis Report" eyebrow="COMPLETED STATIC ANALYSIS" description={`${scan.contractName} · completed ${formatDate(scan.completedAt)}`} actions={<><Link className="button button--secondary" to={`/app/scans/${scan.id}`}>Scan details</Link><button className="button button--primary" type="button" onClick={() => window.print()}>Print / Save as PDF</button></>} /><article className="report-layout"><header className="report-layout__header"><strong>ContractIQ · Local static-analysis report</strong><button className="button button--secondary no-print" type="button" onClick={() => window.print()}>Print report</button></header><div className="report-layout__meta"><span>{scan.id}</span><span>Completed {formatDate(scan.completedAt)}</span></div><h1 className="report-layout__title">{scan.contractName} · Analysis Results</h1><div className="report-layout__demo-note">STATIC ANALYSIS · NOT A SECURITY GUARANTEE</div><div className="report-layout__body"><section className="report-section"><h2>Analysis summary</h2><p>{staticAnalysisNotice}</p><dl className="report-definition-grid"><div><dt>Status</dt><dd><AccountStatus status={scan.status} /></dd></div><div><dt>Analyzer</dt><dd>{scan.analysisEngine ?? 'Not provided'} {scan.analysisVersion ?? ''}</dd></div><div><dt>Compiler</dt><dd>Solidity {scan.compilerVersion}</dd></div><div><dt>Source hash</dt><dd><code>{scan.sourceHash}</code></dd></div><div><dt>Submitted</dt><dd>{formatDate(scan.createdAt)}</dd></div></dl></section><section className="report-section"><h2>Findings ({findings.length})</h2>{findings.length ? findings.map((finding) => <article className="report-finding" key={finding.id}><div className="report-finding__heading"><h3>{finding.title ?? finding.rule_id ?? 'Detector result'}</h3><FindingSeverity severity={finding.severity} /></div>{finding.rule_id && <p><strong>Detector ID:</strong> <code>{finding.rule_id}</code></p>}{finding.description && <p>{finding.description}</p>}{finding.source_path && <p><strong>Location:</strong> <code>{finding.source_path}{finding.line_start ? `:${finding.line_start}` : ''}{finding.line_end && finding.line_end !== finding.line_start ? `–${finding.line_end}` : ''}</code></p>}{finding.code_excerpt && <pre className="report-code"><code>{finding.code_excerpt}</code></pre>}{finding.recommendation && <p><strong>Recommendation:</strong> {finding.recommendation}</p>}<Link className="text-link no-print" to={`/app/scans/${scan.id}/findings/${finding.id}`}>Open finding details <ArrowRight size={13} /></Link></article>) : <div className="report-callout">The completed analyzer response contains zero findings. This does not mean the contract is safe or free of vulnerabilities.</div>}</section><section className="report-section"><h2>Severity counts returned</h2><div className="report-severity-grid">{severityOrder.map((severity) => <div key={severity}><span>{severity}</span><strong>{counts[severity]}</strong></div>)}</div></section><section className="report-section report-limitations"><h2>Limitations</h2><ul><li>Static analysis only; results require independent review.</li><li>This analysis does not guarantee detection of all vulnerabilities.</li><li>The worker accepts one Solidity file without imports.</li><li>No dynamic testing or exploit execution is represented in this report.</li></ul></section></div></article></div>
+  return <div className="page-stack report-page"><PageHeader title="Analysis Report" eyebrow="COMPLETED STATIC ANALYSIS" description={`${scan.contractName} · completed ${formatDate(scan.completedAt)}`} actions={<><Link className="button button--secondary" to={`/app/scans/${scan.id}`}>Scan details</Link><button className="button button--primary" type="button" onClick={() => window.print()}>Print / Save as PDF</button></>} /><article className="report-layout"><header className="report-layout__header"><strong>ContractIQ · Local static-analysis report</strong><button className="button button--secondary no-print" type="button" onClick={() => window.print()}>Print report</button></header><div className="report-layout__meta"><span>{scan.id}</span><span>Completed {formatDate(scan.completedAt)}</span></div><h1 className="report-layout__title">{scan.contractName} · Analysis Results</h1><div className="report-layout__demo-note">STATIC ANALYSIS · NOT A SECURITY GUARANTEE</div><div className="report-layout__body"><section className="report-section"><h2>Analysis summary</h2><p>{staticAnalysisNotice}</p><dl className="report-definition-grid"><div><dt>Status</dt><dd><AccountStatus status={scan.status} /></dd></div><div><dt>Analyzer</dt><dd>{scan.analysisEngine ?? 'Not provided'} {scan.analysisVersion ?? ''}</dd></div><div><dt>Compiler</dt><dd>Solidity {scan.compilerVersion}</dd></div><div><dt>Source hash</dt><dd><code>{scan.sourceHash}</code></dd></div><div><dt>Submitted</dt><dd>{formatDate(scan.createdAt)}</dd></div></dl></section><section className="report-section"><h2>Findings ({findings.length})</h2>{findings.length ? findings.map((finding) => <article className="report-finding" key={finding.id}><div className="report-finding__heading"><h3>{finding.title ?? finding.rule_id ?? 'Detector result'}</h3><FindingSeverity severity={finding.severity} /></div>{finding.rule_id && <p><strong>Detector ID:</strong> <code>{finding.rule_id}</code></p>}{finding.description && <p>{finding.description}</p>}{finding.confidence && <p><strong>Confidence returned:</strong> {finding.confidence}</p>}{finding.impact && <p><strong>Impact returned:</strong> {finding.impact}</p>}{finding.source_path && <p><strong>Location:</strong> <code>{finding.source_path}{finding.line_start ? `:${finding.line_start}` : ''}{finding.line_end && finding.line_end !== finding.line_start ? `–${finding.line_end}` : ''}</code></p>}{finding.code_excerpt && <pre className="report-code"><code>{finding.code_excerpt}</code></pre>}{finding.recommendation && <p><strong>Recommendation:</strong> {finding.recommendation}</p>}<Link className="text-link no-print" to={`/app/scans/${scan.id}/findings/${finding.id}`}>Open finding details <ArrowRight size={13} /></Link></article>) : <div className="report-callout">The completed analyzer response contains zero findings. This does not mean the contract is safe or free of vulnerabilities.</div>}</section><section className="report-section"><h2>Severity counts returned</h2><div className="report-severity-grid">{severityOrder.map((severity) => <div key={severity}><span>{severity}</span><strong>{counts[severity]}</strong></div>)}</div></section><section className="report-section report-limitations"><h2>Limitations</h2><ul><li>Static analysis only; results require independent review.</li><li>This analysis does not guarantee detection of all vulnerabilities.</li><li>The worker accepts one Solidity file without imports.</li><li>No dynamic testing or exploit execution is represented in this report.</li></ul></section></div></article></div>
 }
 

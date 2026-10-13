@@ -3,15 +3,15 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { AccountNewScanPage } from './AccountNewScanPage'
-import { AccountFindingDetailsPage, AccountScanDetailsPage } from './AccountWorkspacePages'
+import { AccountDashboardPage, AccountFindingDetailsPage, AccountScanDetailsPage } from './AccountWorkspacePages'
 import { AccountReportPage } from './AccountWorkspacePages'
 import { NewScanPage } from './NewScanPage'
 import { localScanApi } from '../services/localScanApi'
 import { ThemeProvider } from '../state/ThemeProvider'
 import { ToastProvider } from '../state/ToastProvider'
 
-const workspaceMode = vi.hoisted(() => ({ current: 'account' as 'account' | 'demo' }))
-vi.mock('../state/useWorkspaceMode', () => ({ useWorkspaceMode: () => ({ mode: workspaceMode.current, accessToken: 'account-token' }) }))
+const workspaceMode = vi.hoisted(() => ({ current: 'account' as 'account' | 'demo', token: 'account-token' }))
+vi.mock('../state/useWorkspaceMode', () => ({ useWorkspaceMode: () => ({ mode: workspaceMode.current, accessToken: workspaceMode.token }) }))
 vi.mock('../services/localScanApi', () => ({
   localScanApi: { submit: vi.fn(), getScan: vi.fn(), getSource: vi.fn(), listFindings: vi.fn(), listScans: vi.fn() },
   makeIdempotencyKey: () => 'd7b8ed45-1384-4c15-9177-15a17b5fc012',
@@ -19,7 +19,7 @@ vi.mock('../services/localScanApi', () => ({
 }))
 vi.mock('../components/ui/CodeViewer', () => ({ CodeViewer: ({ value }: { value: string }) => <pre>{value}</pre> }))
 
-afterEach(() => { cleanup(); vi.useRealTimers(); vi.clearAllMocks(); workspaceMode.current = 'account'; vi.unstubAllGlobals() })
+afterEach(() => { cleanup(); vi.useRealTimers(); vi.clearAllMocks(); workspaceMode.current = 'account'; workspaceMode.token = 'account-token'; vi.unstubAllGlobals() })
 
 const id = '42d489d8-e193-4bcf-80a7-e66780d291d8'
 const accountScan = (status: 'queued' | 'running' | 'completed' | 'failed') => ({
@@ -34,10 +34,24 @@ const finding = {
 }
 
 describe('account workspace integration', () => {
+  it('clears prior account scan rows when the authenticated token changes', async () => {
+    vi.mocked(localScanApi.listScans).mockResolvedValueOnce([accountScan('queued')]).mockImplementationOnce(() => new Promise(() => {}))
+    const renderPage = () => <MemoryRouter><Routes><Route path="*" element={<AccountDashboardPage />} /></Routes></MemoryRouter>
+    const { rerender } = render(renderPage())
+    expect(await screen.findByText('Vault')).toBeTruthy()
+    await act(async () => {
+      workspaceMode.token = 'different-account-token'
+      rerender(renderPage())
+    })
+    expect(screen.queryByText('Vault')).toBeNull()
+  })
+
   it('submits the actual source once with the current account token and opens the accepted scan', async () => {
     vi.mocked(localScanApi.submit).mockResolvedValue({ scan: accountScan('queued'), replayed: false })
     render(<MemoryRouter initialEntries={['/app/new-scan']}><Routes><Route path="/app/new-scan" element={<AccountNewScanPage />} /><Route path="/app/scans/:scanId" element={<p>Scan accepted</p>} /></Routes></MemoryRouter>)
     fireEvent.click(screen.getByRole('tab', { name: 'Paste Solidity' }))
+    expect(screen.getByLabelText('Solidity source').getAttribute('wrap')).toBe('off')
+    expect(screen.getByLabelText('Solidity source').classList.contains('source-code-input')).toBe(true)
     fireEvent.change(screen.getByLabelText('Solidity source'), { target: { value: 'pragma solidity 0.8.24; contract Vault {}' } })
     fireEvent.click(screen.getByRole('button', { name: 'Submit for Static Analysis' }))
     await screen.findByText('Scan accepted')
@@ -93,6 +107,15 @@ describe('account workspace integration', () => {
     expect(localScanApi.getScan).toHaveBeenCalledTimes(callsAfterCompletion)
   })
 
+  it('renders failed scans as failed and never exposes a completed report', async () => {
+    vi.mocked(localScanApi.getScan).mockResolvedValue({ ...accountScan('failed'), errorCode: 'analyzer_error', errorMessage: 'Analysis failed.' })
+    render(<MemoryRouter initialEntries={[`/app/scans/${id}`]}><Routes><Route path="/app/scans/:scanId" element={<AccountScanDetailsPage />} /></Routes></MemoryRouter>)
+    expect(await screen.findByText('Failed')).toBeTruthy()
+    expect(screen.getByText(/The local worker could not complete this source/)).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'View report' }).getAttribute('aria-disabled')).toBe('true')
+    expect(localScanApi.listFindings).not.toHaveBeenCalled()
+  })
+
   it('keeps demo New Scan on its seeded workflow without calling the account API', () => {
     workspaceMode.current = 'demo'
     vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
@@ -108,5 +131,16 @@ describe('account workspace integration', () => {
     await act(async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve() })
     expect(await screen.findByText('A report is available only after the backend confirms scan completion.')).toBeTruthy()
     expect(screen.queryByText('Analysis Results')).toBeNull()
+  })
+
+  it('includes API-provided impact and confidence in a completed account report', async () => {
+    vi.mocked(localScanApi.getScan).mockResolvedValue(accountScan('completed'))
+    vi.mocked(localScanApi.listFindings).mockResolvedValue([{ ...finding, severity: 'experimental', line_end: null }])
+    render(<MemoryRouter initialEntries={[`/app/reports/${id}`]}><Routes><Route path="/app/reports/:scanId" element={<AccountReportPage />} /></Routes></MemoryRouter>)
+    expect(await screen.findByText('Confidence returned:')).toBeTruthy()
+    expect(screen.getByText('Impact returned:')).toBeTruthy()
+    expect(screen.getByText('External call before state update.')).toBeTruthy()
+    expect(screen.getByText('Impact returned:').parentElement?.textContent).toContain('high')
+    expect(screen.getByText('Severity returned: experimental')).toBeTruthy()
   })
 })

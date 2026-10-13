@@ -4,7 +4,8 @@ This is a local-only backend foundation. The React account workspace now calls t
 
 ## Architecture and trust boundary
 
-- `server.py` binds only to `127.0.0.1` and starts the authenticated API plus one private queue-consumer thread.
+- `server.py` defaults to `127.0.0.1`, allows only the configured exact browser origins, and starts the authenticated API plus one private queue-consumer thread. Production bind/origin/concurrency settings are documented in the repository's [DEPLOYMENT.md](../DEPLOYMENT.md).
+- For centralized placeholder-only deployment environment references, see [`deployment/backend.env.example`](../deployment/backend.env.example); inject real values using the backend host's secret manager, not a committed file.
 - Every protected request validates its Supabase access token by asking Supabase Auth for the current user. The API takes the owner UUID only from that verified response; request `user_id` fields are rejected.
 - `contractiq_scans` is the durable queue. Existing `queued`, `running`, `completed`, and `failed` states plus `started_at`, `completed_at`, `options`, `summary`, and error columns are used. The server submits a queued row with an owner-scoped deterministic UUID derived from the `Idempotency-Key`. Repeating the same key and payload returns the same record; reusing it for different content returns a conflict.
 - The background worker claims a row with a conditional `queued → running` update, executes the existing Docker-isolated Slither runner, and writes findings and completion metadata using a server-only service-role credential. It permits two total attempts (one retry), uses a 180-second analyzer timeout with stale-lease recovery, and keeps provider/compiler details out of API errors.
@@ -71,7 +72,7 @@ Example JSON body:
 
 - `GET /api/scans` lists the verified user's scans.
 - `GET /api/scans/{scanId}` reads one scan owned by that user.
-- `GET /api/scans/{scanId}/findings` reads findings only after verifying scan ownership.
+- `GET /api/scans/{scanId}/findings` verifies scan ownership and returns findings only after the scan is completed; queued, running, and failed scans return `409 scan_not_completed`.
 - `GET /api/scans/{scanId}/source` returns the source and filename only after verifying scan ownership. This endpoint supports account scan details after a page refresh; full source remains excluded from scan list/detail JSON.
 - `GET /health` returns local process health without account data.
 

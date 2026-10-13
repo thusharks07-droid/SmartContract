@@ -87,6 +87,7 @@
   .demo-entry-layout { gap: 24px; padding-block: 30px; }
   .demo-entry-intro h1 { font-size: 40px; }
   .demo-login-card { padding: 21px 18px; }
+  .demo-login-mode-toggle { min-height: 44px; }
   .demo-entry-footer { align-content: center; justify-content: center; padding-block: 12px; text-align: center; }
 }
 @media (prefers-reduced-motion: reduce) {

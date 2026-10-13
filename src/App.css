@@ -260,9 +260,12 @@
 @media (max-width: 440px) {
   .topbar__eyebrow { font-size: 8px; }
   .environment-badge { padding-inline: 6px; font-size: 7px; }
-  .theme-button { min-width: 30px; padding-inline: 5px; }
+  .theme-button { min-width: 44px; min-height: 44px; padding-inline: 5px; }
   .theme-button__label { display: none; }
   .workspace { padding-inline: 15px; }
+  .topbar { gap: 6px; padding-inline: 8px; }
+  .topbar__context { min-width: 0; }
+  .environment-badge { max-width: 90px; }
   .foundation-card__footer { align-items: flex-start; flex-direction: column; gap: 8px; }
 }
 
@@ -281,7 +284,8 @@
 }
 
 /* Part 3 core page system */
-.page-stack { display: grid; min-width: 0; gap: 22px; }
+.page-stack { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); gap: 22px; }
+.page-stack > * { min-width: 0; }
 .panel { min-width: 0; padding: 20px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
 .section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 16px; }
 .section-heading h2, .panel > h2 { margin: 0; color: var(--text); font-size: 16px; font-weight: 610; letter-spacing: -.02em; }
@@ -455,6 +459,7 @@
 .finding-detail-main { display: grid; min-width: 0; gap: 13px; }
 .finding-detail-aside { position: sticky; top: 84px; display: grid; gap: 12px; }
 .finding-content-section > p:not(.eyebrow), .remediation-panel > p { color: var(--text-muted); font-size: 11px; line-height: 1.7; }
+.finding-content-section > p:not(.eyebrow), .report-finding p { overflow-wrap: anywhere; }
 .finding-content-section h2, .remediation-panel h2, .related-findings-panel h2 { margin: 0 0 10px; color: var(--text); font-size: 15px; font-weight: 600; }
 .finding-content-section .eyebrow, .remediation-panel .eyebrow, .related-findings-panel .eyebrow { margin: 0 0 7px; }
 .illustrative-inline { display: flex; align-items: flex-start; gap: 8px; padding: 10px; border: 1px solid color-mix(in srgb, var(--warning) 24%, var(--border)); border-radius: 5px; color: var(--warning) !important; font-size: 9px !important; }
@@ -465,6 +470,7 @@
 .finding-code-line--active { background: rgb(59 130 246 / 16%); }
 .finding-code-line__number { width: 38px; flex: 0 0 38px; padding-right: 12px; color: #a0aec0; text-align: right; user-select: none; }
 .finding-code-line code { color: #d5deea; font: inherit; }
+.finding-code-excerpt, .report-code { max-width: 100%; }
 .remediation-panel { overflow: hidden; }
 .remediation-panel .section-heading { align-items: center; }
 .unverified-label { padding: 5px 7px; border: 1px solid var(--border); border-radius: 4px; color: var(--text-subtle); font-size: 8px; white-space: nowrap; }
@@ -658,4 +664,21 @@
   .report-kpi-grid strong, .report-severity-grid strong, .report-table th, .report-table td { color: #111 !important; }
   .report-code { color: #111 !important; background: #f4f4f4 !important; }
   .route-content { animation: none !important; transform: none !important; }
+}
+
+@media (max-width: 760px) {
+  .button, .button--small, .icon-button, .nav-link, .filter-chip, .source-tab, .settings-tab, .select-control, .action-menu__items a, .action-menu__items button { min-height: 44px; }
+  .select-control { height: 44px; }
+  .sidebar__toggle, .user-menu__trigger, .search-input__clear { min-height: 44px; }
+  .filter-bar__options { flex-wrap: wrap; }
+  .form-field { font-size: 12px; }
+  .form-field > span > small, .form-field > small { font-size: 11px; }
+  .form-field input, .form-field select, .form-field textarea { min-height: 44px; font-size: 16px; }
+  .input-panel .source-code-input { min-height: 320px; overflow-x: auto; font-family: var(--font-mono); font-size: 14px; line-height: 1.55; tab-size: 4; white-space: pre; }
+  .data-table__sort { min-height: 44px; }
+  .report-layout { width: 100%; }
+  .report-layout__header { align-items: flex-start; flex-wrap: wrap; }
+  .report-layout__header .button { margin-left: 0; }
+  .report-layout__meta { flex-wrap: wrap; overflow-wrap: anywhere; }
+  .report-table th, .report-table td { padding: 10px 8px; }
 }
