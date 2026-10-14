@@ -2,6 +2,7 @@ import type { Theme } from '../types/theme'
 
 export type AppSettings = {
   theme: Theme
+  aiProvider: 'automatic' | 'groq' | 'gemini' | 'disabled'
   workspaceName: string
   defaultView: 'dashboard' | 'history'
   defaultOptions: { reentrancy: boolean; accessControl: boolean; staticAnalysis: boolean }
@@ -13,7 +14,8 @@ export type AppSettings = {
 }
 const storageKey = 'contractiq.settings'
 const defaultSettings: AppSettings = {
-  theme: 'dark',
+  theme: 'light',
+  aiProvider: 'automatic',
   workspaceName: 'smartBOB Demo',
   defaultView: 'dashboard',
   defaultOptions: { reentrancy: true, accessControl: true, staticAnalysis: true },

@@ -1,4 +1,4 @@
-# ContractIQ deployment guide
+# smartBOB deployment guide
 
 This repository contains a Vite frontend, a Python standard-library API/queue process, and a Docker-isolated Slither image. It contains no frontend-host, API-host, reverse-proxy, or production infrastructure configuration. Choose and provision those services manually; this guide does not deploy anything.
 
@@ -32,7 +32,7 @@ Backend process environment:
 - `CONTRACTIQ_API_PORT`: defaults to `8765`.
 - `CONTRACTIQ_API_MAX_CONCURRENCY`: defaults to `16`, valid range `1–128`; excess concurrent connections receive `503`.
 
-Request bodies are capped at 516,000 bytes by the API; source text is capped at 500,000 UTF-8 bytes. The API socket read timeout is 15 seconds, Supabase upstream timeout is 10 seconds, and the frontend request timeout is 15 seconds. The queue worker processes one analyzer job at a time and analyzer execution is bounded by its existing timeout/retry policy. Configure the HTTPS proxy with a body limit no higher than 516,000 bytes, TLS-only access, per-client rate limiting (suggested starting point: 60 API requests/minute and 5 scan submissions/minute), and upstream timeouts compatible with the 15-second API request deadline. Do not trust caller-supplied forwarded-IP headers unless the proxy strips and replaces them.
+Request bodies are capped at 3,016,000 bytes by the API to account for JSON escaping; decoded source text is capped at 500,000 UTF-8 bytes. The API socket read timeout is 15 seconds, Supabase upstream timeout is 10 seconds, and the frontend request timeout is 15 seconds. The queue worker processes one analyzer job at a time and analyzer execution is bounded by its existing timeout/retry policy. Configure the HTTPS proxy with a body limit no higher than 3,016,000 bytes, TLS-only access, per-client rate limiting (suggested starting point: 60 API requests/minute and 5 scan submissions/minute), and upstream timeouts compatible with the 15-second API request deadline. Do not trust caller-supplied forwarded-IP headers unless the proxy strips and replaces them.
 
 ## Manual deployment sequence
 

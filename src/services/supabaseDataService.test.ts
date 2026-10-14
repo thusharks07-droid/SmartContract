@@ -28,7 +28,7 @@ beforeEach(() => {
   supabaseMocks.getUser.mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null })
 })
 
-describe('Supabase persistent data service', () => {
+describe('Supabase read-only data service', () => {
   it('limits scan listing to the authenticated owner and maps queued rows honestly', async () => {
     const chain = {
       select: vi.fn().mockReturnThis(),
@@ -43,36 +43,11 @@ describe('Supabase persistent data service', () => {
     expect(supabaseMocks.from).toHaveBeenCalledWith('contractiq_scans')
     expect(chain.eq).toHaveBeenCalledWith('user_id', 'user-1')
     expect(scans[0]?.status).toBe('queued')
-    expect(scans[0]?.summary).toContain('No analyzer is currently connected')
+    expect(scans[0]?.summary).toContain('Analysis has not completed')
   })
 
-  it('creates only a user-owned queued submission and does not write analysis outcomes', async () => {
-    const chain = {
-      insert: vi.fn().mockReturnThis(),
-      select: vi.fn().mockReturnThis(),
-      single: vi.fn().mockResolvedValue({ data: makeScanRow(), error: null }),
-    }
-    supabaseMocks.from.mockReturnValue(chain)
-
-    const created = await supabaseDataService.createQueuedSubmission({
-      contractName: 'Vault', sourceCode: 'contract Vault {}', inputType: 'paste',
-    })
-    const inserted = chain.insert.mock.calls[0]?.[0] as Record<string, unknown>
-
-    expect(created.status).toBe('queued')
-    expect(inserted.user_id).toBe('user-1')
-    expect(inserted.source_code).toBe('contract Vault {}')
-    expect(inserted).not.toHaveProperty('status')
-    expect(inserted).not.toHaveProperty('is_demo')
-    expect(inserted).not.toHaveProperty('analysis_engine')
-    expect(inserted).not.toHaveProperty('summary')
-  })
-
-  it('rejects oversized source locally before making a database request', async () => {
-    await expect(supabaseDataService.createQueuedSubmission({
-      contractName: 'Vault', sourceCode: 'x'.repeat(500_001), inputType: 'paste',
-    })).rejects.toMatchObject({ code: 'invalid_source_length' })
-    expect(supabaseMocks.getUser).not.toHaveBeenCalled()
-    expect(supabaseMocks.from).not.toHaveBeenCalled()
+  it('does not expose browser scan submission or deletion methods', () => {
+    expect(supabaseDataService).not.toHaveProperty('createQueuedSubmission')
+    expect(supabaseDataService).not.toHaveProperty('deleteScan')
   })
 })

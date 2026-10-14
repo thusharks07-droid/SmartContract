@@ -1,6 +1,6 @@
-# ContractIQ
+# smartBOB
 
-ContractIQ has two isolated workspaces. Continue as Demo uses a deterministic frontend dataset; its findings and reports are illustrative and no analysis runs. Signed-in account mode can submit a single Solidity source file to the local Docker-isolated Slither worker through the authenticated local API. This is static analysis and does not guarantee detection of all vulnerabilities.
+smartBOB has two isolated workspaces. Continue as Demo uses a deterministic frontend dataset; its findings and reports are illustrative and no analysis runs. Signed-in account mode can submit a single Solidity source file to the local Docker-isolated Slither worker through the authenticated local API. This is static analysis and does not guarantee detection of all vulnerabilities.
 
 ## Run locally
 
@@ -30,7 +30,7 @@ Production builds require `VITE_CONTRACTIQ_API_URL` to be an HTTPS API origin; t
 
 These browser-visible values are public. RLS must protect every exposed table. `.env.local` is ignored by Git. Never put a Supabase personal access token (PAT), secret/service-role key, database password, or analyzer secret in source code or any `VITE_` variable. A PAT is an account-management credential and is not used by this application.
 
-When configured, the account form uses Supabase Auth for email/password sign-in and signup. Passwords are passed only to Supabase Auth; ContractIQ does not log or store them. Supabase manages its auth session. **Continue as Demo** is separate and stores only `{ "mode": "demo", "displayName": "Demo User" }` in tab-scoped `sessionStorage` under `contractiq.demo-session` (or in memory if storage is unavailable). Signing out clears that marker. Demo remains usable without Supabase.
+When configured, the account form uses Supabase Auth for email/password sign-in and signup. Passwords are passed only to Supabase Auth; smartBOB does not log or store them. Supabase manages its auth session. **Continue as Demo** is separate and stores only `{ "mode": "demo", "displayName": "Demo User" }` in tab-scoped `sessionStorage` under `contractiq.demo-session` (or in memory if storage is unavailable). Signing out clears that marker. Demo remains usable without Supabase.
 
 Account mode obtains the current access token from the Supabase session and sends it to the authenticated local API. The API validates it with Supabase Auth and derives the owner ID itself. Browser code never receives a service-role key. The local API and worker require `CONTRACTIQ_SUPABASE_URL`, `CONTRACTIQ_SUPABASE_ANON_KEY`, and server-only `CONTRACTIQ_SUPABASE_SERVICE_ROLE_KEY`; see [scanner-worker/README.md](scanner-worker/README.md) for setup and exact run commands. Starting that server performs live Auth/PostgREST requests; these automated tests do not.
 
@@ -38,7 +38,7 @@ Account scan pages use the local API for submissions, scan history, details, fin
 
 ## SQL review and manual application
 
-`supabase/contractiq_schema.proposed.sql` remains a proposal/reference only. This integration phase did not run SQL or modify the live schema. The API expects the `contractiq_scans` and `contractiq_findings` columns described in `database.types.ts`; confirm the live schema and policies separately before using it. Browser clients cannot write findings or update scan outcomes through the API.
+`supabase/contractiq_schema.proposed.sql` remains a proposal/reference only. This integration phase did not run SQL or modify the live schema. Account Mode reads and writes scan data through the authenticated Python API; the browser Supabase client is used for Auth, not direct scan inserts or deletes. Confirm the live schema, RLS policies, grants, and server-side service-role access separately before enabling real scans.
 
 This local static-analysis worker runs Slither in an isolated Docker Linux container. It is not a complete audit, does not execute exploits, and does not guarantee detection of all vulnerabilities. A completed result with zero findings does not mean the contract is safe. Imports/dependency resolution, dynamic analysis, deployed bytecode analysis, and production deployment are out of scope.
 

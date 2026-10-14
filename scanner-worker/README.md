@@ -1,4 +1,4 @@
-# ContractIQ local scanner API and worker
+# smartBOB local scanner API and worker
 
 This is a local-only backend foundation. The React account workspace now calls these endpoints; the separate demo workspace continues to use its seeded mock data. Account/demo separation remains explicit: this API accepts only a verified Supabase account bearer token, never a simulated demo session.
 
@@ -7,10 +7,13 @@ This is a local-only backend foundation. The React account workspace now calls t
 - `server.py` defaults to `127.0.0.1`, allows only the configured exact browser origins, and starts the authenticated API plus one private queue-consumer thread. Production bind/origin/concurrency settings are documented in the repository's [DEPLOYMENT.md](../DEPLOYMENT.md).
 - For centralized placeholder-only deployment environment references, see [`deployment/backend.env.example`](../deployment/backend.env.example); inject real values using the backend host's secret manager, not a committed file.
 - Every protected request validates its Supabase access token by asking Supabase Auth for the current user. The API takes the owner UUID only from that verified response; request `user_id` fields are rejected.
-- `contractiq_scans` is the durable queue. Existing `queued`, `running`, `completed`, and `failed` states plus `started_at`, `completed_at`, `options`, `summary`, and error columns are used. The server submits a queued row with an owner-scoped deterministic UUID derived from the `Idempotency-Key`. Repeating the same key and payload returns the same record; reusing it for different content returns a conflict.
+- Optional AI explanations run in the trusted Python API. The browser sends only a saved scan/finding ID and provider choice; the server loads the completed owner-scoped finding and sends bounded detector metadata/evidence plus a limited source excerpt. AI never updates findings or scan status.
+- Automatic AI mode uses Groq first and Gemini as fallback only for transient availability failures. Authentication/configuration errors, invalid requests, malformed model output, and provider quotas are returned without trying another provider. An in-memory limit allows at most 10 explanation requests per account per minute and two concurrent provider calls per API process.
+- The API also limits scan submissions to 30 per account per minute. These in-memory limits are per API process; a horizontally scaled deployment needs an edge/shared rate limiter for a global limit.
+- `contractiq_scans` is the durable queue. The browser submits only to the authenticated API; the backend uses its server-only service-role credential to create a queued row with an owner-scoped deterministic UUID derived from the `Idempotency-Key`. Repeating the same key and payload returns the same record; reusing it for different content returns a conflict. Authenticated browser roles should not have direct scan insert or delete privileges.
 - The background worker claims a row with a conditional `queued → running` update, executes the existing Docker-isolated Slither runner, and writes findings and completion metadata using a server-only service-role credential. It permits two total attempts (one retry), uses a 180-second analyzer timeout with stale-lease recovery, and keeps provider/compiler details out of API errors.
 - There is no HTTP route to claim a job, write findings, submit results, or change scan status. The service-role key is read only from the backend process environment and is never compiled into Vite or returned to callers.
-- The reviewed `supabase/contractiq_schema.proposed.sql` already contains the columns and RLS/grants needed by this implementation. No migration or SQL execution is included. The API relies on those protections remaining in place; this code does not verify the live project's schema or policies.
+- The reviewed `supabase/contractiq_schema.proposed.sql` describes the columns and RLS/grants needed by this implementation, including explicit server-side service-role table privileges. No migration or SQL execution is included. The API relies on those protections remaining in place; this code does not verify the live project's schema or policies.
 
 ## Prerequisites
 
@@ -18,10 +21,11 @@ This is a local-only backend foundation. The React account workspace now calls t
 - Python 3.10 or later on the host.
 - The analyzer image built as described below.
 - A server-only Supabase service-role key available locally. Do not use a personal access token, database password, or Vite variable for this value. Do not paste it into source files or commit it.
+- Optional `GROQ_API_KEY` and `GEMINI_API_KEY` backend keys for AI explanations. In local development, `server.py` reads only those non-`VITE_` names from the ignored repository-root `.env`; process environment values take precedence. Production deployments must inject them through the backend host's secret manager.
 
 ## Build and test
 
-Run from the ContractIQ repository root in PowerShell:
+Run from the smartBOB repository root in PowerShell:
 
 ```powershell
 docker info --format '{{.OSType}}' # must print: linux
@@ -33,7 +37,7 @@ The API/queue unit tests use fake Auth, storage, and analyzer components. They m
 
 ## Run the local API and queue worker
 
-Set these process environment variables in PowerShell. Obtain the project URL and public anon/publishable key from the existing local configuration. Obtain the service-role key from the Supabase project dashboard and keep it server-side. This code does not read `.env.local` and does not print any values.
+Set these process environment variables in PowerShell. Obtain the project URL and public anon/publishable key from the existing local configuration. Obtain the service-role key from the Supabase project dashboard and keep it server-side. Provider API keys may be kept in the ignored root `.env` under `GROQ_API_KEY` and `GEMINI_API_KEY`; the Vite client never references those names. The backend does not read `.env.local` and does not print secret values.
 
 ```powershell
 $env:CONTRACTIQ_SUPABASE_URL = "https://<project-ref>.supabase.co"
@@ -74,9 +78,17 @@ Example JSON body:
 - `GET /api/scans/{scanId}` reads one scan owned by that user.
 - `GET /api/scans/{scanId}/findings` verifies scan ownership and returns findings only after the scan is completed; queued, running, and failed scans return `409 scan_not_completed`.
 - `GET /api/scans/{scanId}/source` returns the source and filename only after verifying scan ownership. This endpoint supports account scan details after a page refresh; full source remains excluded from scan list/detail JSON.
+- `GET /api/ai/status` reports only whether each provider is configured, plus the server's primary/fallback names. It requires an authenticated account token and never returns keys.
+- `POST /api/ai/scans/{scanId}/findings/{findingId}/explanation` accepts `{"provider":"automatic"|"groq"|"gemini"}`. The API verifies ownership and completed status, loads the saved finding, and only then calls the chosen provider. The frontend cannot submit arbitrary source or scanner results through this route. Explanations are validated, returned as separate AI-generated content, and are not persisted.
 - `GET /health` returns local process health without account data.
 
 There are intentionally no caller-accessible result, claim, update, or cancellation routes. Errors are JSON with stable codes and do not include source code, access tokens, service-role values, or raw provider diagnostics.
+
+### AI provider configuration
+
+The default models are `openai/gpt-oss-120b` for Groq and `gemini-2.5-flash` for Gemini. Both can be overridden with `GROQ_MODEL` and `GEMINI_MODEL`; provider order can be configured with `SMARTBOB_AI_PRIMARY_PROVIDER` and `SMARTBOB_AI_FALLBACK_PROVIDER` (defaults: `groq`, then `gemini`). Gemini 2.5 requests disable optional thinking tokens to keep the bounded structured explanation focused. `SMARTBOB_AI_TIMEOUT_SECONDS` is bounded to 2–12 seconds per provider call and defaults to 10 seconds, allowing time for structured responses while keeping automatic fallback within the frontend request deadline. Both model IDs support JSON output; recheck project-specific availability before deployment.
+
+The finding screen sends context only after the user requests an explanation. It displays a notice that detector metadata, evidence, and a limited source excerpt are sent to the selected provider. The explanation output is not part of persisted scan reports; reports continue to represent saved scanner findings only.
 
 ## Existing isolated scan CLI
 

@@ -3,9 +3,11 @@
 -- Inspect the project's existing schemas/policies before applying. All object
 -- names are ContractIQ-prefixed to avoid taking over generic public tables.
 --
--- Supabase Auth/Postgres does not analyze Solidity. Client submissions remain
--- queued. Only a separately provisioned trusted analyzer may set outcomes or
--- insert findings. No scanner endpoint is configured by this repository.
+-- Account submissions go through the authenticated Python API. The API uses a
+-- server-only service-role credential to create queued scans; the private queue
+-- worker runs the isolated analyzer and persists trusted findings and outcomes.
+-- Browser roles have read-only access to their own rows and cannot enqueue or
+-- delete scans directly.
 
 create schema if not exists contractiq_private;
 revoke all on schema contractiq_private from public, anon, authenticated;
@@ -40,9 +42,16 @@ create table if not exists public.contractiq_scans (
   notes text,
   created_at timestamptz not null default pg_catalog.now(),
   updated_at timestamptz not null default pg_catalog.now(),
-  constraint contractiq_scans_source_size check (char_length(source_code) between 1 and 500000),
+  constraint contractiq_scans_source_size check (octet_length(source_code) between 1 and 500000),
   constraint contractiq_scans_id_user_unique unique (id, user_id)
 );
+
+-- Keep upgrades of a previously-created table aligned with the API's UTF-8
+-- byte limit instead of leaving the older character-count constraint active.
+alter table public.contractiq_scans
+  drop constraint if exists contractiq_scans_source_size;
+alter table public.contractiq_scans
+  add constraint contractiq_scans_source_size check (octet_length(source_code) between 1 and 500000);
 
 create table if not exists public.contractiq_findings (
   id uuid primary key default gen_random_uuid(),
@@ -71,8 +80,13 @@ create index if not exists contractiq_scans_user_created_idx
   on public.contractiq_scans (user_id, created_at desc);
 create index if not exists contractiq_scans_user_status_idx
   on public.contractiq_scans (user_id, status);
+create index if not exists contractiq_scans_queued_created_idx
+  on public.contractiq_scans (created_at asc, id asc)
+  where status = 'queued';
 create index if not exists contractiq_findings_scan_severity_idx
   on public.contractiq_findings (scan_id, severity);
+create index if not exists contractiq_findings_scan_owner_created_idx
+  on public.contractiq_findings (scan_id, user_id, created_at asc, id asc);
 create index if not exists contractiq_findings_user_created_idx
   on public.contractiq_findings (user_id, created_at desc);
 
@@ -132,39 +146,24 @@ create policy contractiq_scans_select_own on public.contractiq_scans
 for select to authenticated using ((select auth.uid()) = user_id);
 
 drop policy if exists contractiq_scans_insert_queued_own on public.contractiq_scans;
-create policy contractiq_scans_insert_queued_own on public.contractiq_scans
-for insert to authenticated with check (
-  (select auth.uid()) = user_id
-  and status = 'queued'
-  and is_demo = false
-  and analysis_engine is null
-  and analysis_version is null
-  and error_code is null
-  and error_message is null
-  and started_at is null
-  and completed_at is null
-  and summary = '{}'::jsonb
-);
-
 drop policy if exists contractiq_scans_delete_own on public.contractiq_scans;
-create policy contractiq_scans_delete_own on public.contractiq_scans
-for delete to authenticated using ((select auth.uid()) = user_id);
 
 drop policy if exists contractiq_findings_select_own on public.contractiq_findings;
 create policy contractiq_findings_select_own on public.contractiq_findings
 for select to authenticated using ((select auth.uid()) = user_id);
 
--- Column-level insert grants prevent browser clients from setting analyzer-owned
--- status/result fields even before RLS checks. No UPDATE grant is given on scans.
-revoke all on public.contractiq_profiles, public.contractiq_scans, public.contractiq_findings from anon, authenticated;
+revoke all on public.contractiq_profiles, public.contractiq_scans, public.contractiq_findings from anon, authenticated, service_role;
 grant select on public.contractiq_profiles to authenticated;
 grant update (display_name) on public.contractiq_profiles to authenticated;
-grant select, delete on public.contractiq_scans to authenticated;
-grant insert (user_id, contract_name, source_filename, source_code, source_hash,
-  input_type, compiler_version, options, notes) on public.contractiq_scans to authenticated;
+grant select on public.contractiq_scans to authenticated;
 grant select on public.contractiq_findings to authenticated;
 
+-- Make the server-side PostgREST contract explicit. This also works in
+-- projects where new public tables are not automatically exposed to roles.
+grant select, insert, update on public.contractiq_scans to service_role;
+grant select, insert, delete on public.contractiq_findings to service_role;
+
 comment on table public.contractiq_scans is
-  'Authenticated source submissions. Browser clients can only insert queued non-demo submissions. No scanner is configured by ContractIQ frontend.';
+  'Authenticated source submissions. Browser clients can read their own rows; only the authenticated Python API and trusted backend worker write scan records and outcomes.';
 comment on table public.contractiq_findings is
-  'Trusted analyzer output. Browser clients can read only their own findings and cannot create or alter findings.';
+  'Trusted analyzer output. Browser clients can read only their own findings and cannot create, alter, or delete findings.';

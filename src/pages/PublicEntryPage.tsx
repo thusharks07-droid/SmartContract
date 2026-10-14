@@ -9,8 +9,7 @@ import './public-entry.css'
 const sections = [
   { label: 'Product', href: '#product' },
   { label: 'How it works', href: '#how-it-works' },
-  { label: 'Capabilities', href: '#capabilities' },
-  { label: 'FAQ', href: '#faq' },
+  { label: 'Security', href: '#capabilities' },
 ]
 
 const severityLabels: Record<Severity, string> = {
@@ -22,16 +21,16 @@ const severityLabels: Record<Severity, string> = {
 }
 
 const featureCards = [
-  { icon: ShieldAlert, title: 'Understand findings', body: 'Review illustrative severity, category, evidence, and potential impact in a structured finding view.' },
-  { icon: Code2, title: 'Trace source context', body: 'Connect each demo finding to the relevant contract and source excerpt for closer inspection.' },
-  { icon: Network, title: 'Explore relationships', body: 'Inspect illustrative contract and function relationships through an optional, accessible graph view.' },
-  { icon: FileText, title: 'Review remediation', body: 'Compare suggested patterns and print a clearly labeled demo report for discussion.' },
+  { icon: ShieldAlert, title: 'Detect potential vulnerabilities', body: 'Run supported static-analysis detectors in an isolated Slither worker. Coverage depends on the analyzer and submitted source.' },
+  { icon: Code2, title: 'Understand the evidence', body: 'Trace returned findings to source locations, excerpts, and analyzer evidence for a closer review.' },
+  { icon: Network, title: 'Fix with confidence', body: 'Review remediation suggestions alongside the finding and validate any change independently.' },
+  { icon: FileText, title: 'Track every scan', body: 'Keep account-owned scan history and review persisted findings in a clear, printable report.' },
 ]
 
 const steps = [
-  { number: '01', title: 'Choose a demo contract', body: 'Start with a seeded Solidity example or add local source to create a demo record in this browser.' },
-  { number: '02', title: 'Explore illustrative findings', body: 'The public demo shows sample severity, source context, and relationships. Account scans use a separately configured local static-analysis worker.' },
-  { number: '03', title: 'Review and share a demo report', body: 'Read remediation suggestions and use the browser print flow to create a demo report.' },
+  { number: '01', title: 'Submit Solidity source', body: 'Sign in, choose a supported compiler, and submit source to the authenticated scanner API.' },
+  { number: '02', title: 'Follow the real scan status', body: 'The queue runs the isolated static analyzer. smartBOB reports only states and findings returned by the backend.' },
+  { number: '03', title: 'Review evidence and guidance', body: 'Inspect affected lines, analyzer evidence, and remediation suggestions, then verify changes independently.' },
 ]
 
 const faqs = [
@@ -110,7 +109,7 @@ export function PublicEntryPage() {
       <header className="landing-header">
         <div className="landing-container landing-header__inner">
           <Link className="landing-brand" to="/" aria-label="smartBOB home">
-            <span className="landing-brand__mark"><img src="/smartbob-logo.jpg" alt="" /></span>
+            <span className="landing-brand__mark"><img src="/smartbob-mark-orange.png" alt="" /></span>
             <span className="landing-brand__word"><span className="landing-brand__name">smart<span>BOB</span></span><small>Smart Contract Scanner</small></span>
           </Link>
           <nav className="landing-nav landing-nav--desktop" aria-label="Main navigation">
@@ -118,7 +117,7 @@ export function PublicEntryPage() {
           </nav>
           <div className="landing-header__actions">
             <Link className="landing-signin" to="/login">Sign in</Link>
-            <Link className="landing-button landing-button--primary landing-header__cta" to="/login?mode=demo">Explore Demo <ArrowRight size={15} aria-hidden="true" /></Link>
+            <Link className="landing-button landing-button--primary landing-header__cta" to="/login">Start scanning <ArrowRight size={15} aria-hidden="true" /></Link>
             <button ref={menuButtonRef} className="landing-menu-toggle" type="button" aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'} aria-expanded={menuOpen} aria-controls="landing-mobile-navigation" onClick={() => setMenuOpen((open) => !open)}>
               {menuOpen ? <X size={19} aria-hidden="true" /> : <Menu size={19} aria-hidden="true" />}
             </button>
@@ -135,26 +134,26 @@ export function PublicEntryPage() {
         <div className="landing-container landing-hero__grid">
           <div className="landing-hero__copy">
             <p className="landing-eyebrow"><span />SMART CONTRACT SECURITY WORKSPACE</p>
-            <h1 id="landing-title">See the risks in your smart contracts <em>before deployment.</em></h1>
-            <p className="landing-hero__description">Explore a developer-focused workspace for reviewing vulnerability findings, understanding affected code, and examining remediation guidance.</p>
+            <h1 id="landing-title">Find the flaws before <em>they find you.</em></h1>
+            <p className="landing-hero__description">Analyze Solidity contracts, trace potential vulnerabilities to the source, and review practical guidance before deployment.</p>
             <div className="landing-hero__actions">
-              <Link className="landing-button landing-button--primary" to="/login?mode=demo">Explore Demo <ArrowRight size={16} aria-hidden="true" /></Link>
-              <a className="landing-button landing-button--quiet" href="#how-it-works">See How It Works <ArrowDown size={15} aria-hidden="true" /></a>
+              <Link className="landing-button landing-button--primary" to="/login">Start scanning <ArrowRight size={16} aria-hidden="true" /></Link>
+              <Link className="landing-button landing-button--quiet" to="/login?mode=demo">Explore demo <ArrowDown size={15} aria-hidden="true" /></Link>
             </div>
-            <p className="landing-disclaimer"><Shield size={15} aria-hidden="true" /><span>Interactive demo — uses illustrative mock data. No real contract analysis is performed.</span></p>
+            <p className="landing-disclaimer"><Shield size={15} aria-hidden="true" /><span>Static analysis is a starting point for review, not a guarantee that every vulnerability will be found.</span></p>
           </div>
-          <div className="landing-hero__visual"><ProductPreview /></div>
+          <div className="landing-hero__visual"><ProductPreview /><div className="landing-hero__companion" aria-hidden="true"><img src="/smartbob-mark-orange.png" alt="" /><span>Review with smartBOB</span></div></div>
         </div>
         <div className="landing-hero__grid-glow" aria-hidden="true" />
       </section>
 
       <section className="landing-facts" aria-label="What the demo lets you explore">
         <div className="landing-container landing-facts__grid">
-          <div className="landing-facts__intro"><span className="landing-facts__icon"><Activity size={17} aria-hidden="true" /></span><p>BUILT FOR REVIEW<br /><strong>Not a scanner</strong></p></div>
-          <div><Check size={15} aria-hidden="true" /><span>Findings organized by severity</span></div>
-          <div><Check size={15} aria-hidden="true" /><span>Source-level context</span></div>
-          <div><Check size={15} aria-hidden="true" /><span>Remediation guidance</span></div>
-          <div><Check size={15} aria-hidden="true" /><span>Clearly labeled demo data</span></div>
+          <div className="landing-facts__intro"><span className="landing-facts__icon"><Activity size={17} aria-hidden="true" /></span><p>BUILT FOR REVIEW<br /><strong>Static analysis</strong></p></div>
+          <div><Check size={15} aria-hidden="true" /><span>Isolated analysis worker</span></div>
+          <div><Check size={15} aria-hidden="true" /><span>Evidence-linked findings</span></div>
+          <div><Check size={15} aria-hidden="true" /><span>Account-owned history</span></div>
+          <div><Check size={15} aria-hidden="true" /><span>Demo mode stays separate</span></div>
         </div>
       </section>
 
@@ -163,7 +162,7 @@ export function PublicEntryPage() {
           <div className="landing-section__heading">
             <p className="landing-section__eyebrow">A CLEARER REVIEW WORKSPACE</p>
             <h2 id="product-title">Explore the details that matter.</h2>
-            <p>smartBOB brings illustrative findings and their supporting context into one focused interface.</p>
+            <p>Move from returned detector output to source evidence and remediation guidance in one focused workspace.</p>
           </div>
           <div className="landing-feature-grid">
             {featureCards.map(({ icon: Icon, title, body }, index) => <article className="landing-feature-card" key={title}>
@@ -181,9 +180,9 @@ export function PublicEntryPage() {
         <div className="landing-container landing-process-layout">
           <div className="landing-section__heading landing-section__heading--left">
             <p className="landing-section__eyebrow">HOW IT WORKS</p>
-            <h2 id="how-title">A practical path through the demo.</h2>
-            <p>Move from sample source to a structured review. The current workflow is simulated entirely in your browser.</p>
-            <p className="landing-process__note"><Shield size={15} aria-hidden="true" />No real scanner, backend, or exploit execution is involved.</p>
+            <h2 id="how-title">A clear path from source to review.</h2>
+            <p>Account scans use the configured authenticated API and isolated analyzer. Use Demo Mode to explore the interface with clearly labeled sample records.</p>
+            <p className="landing-process__note"><Shield size={15} aria-hidden="true" />Analysis is static; validate findings and suggested fixes before relying on them.</p>
           </div>
           <ol className="landing-steps">
             {steps.map((step) => <li key={step.number}><span className="landing-step__number">{step.number}</span><span className="landing-step__rule" /><div><h3>{step.title}</h3><p>{step.body}</p></div></li>)}
@@ -196,16 +195,16 @@ export function PublicEntryPage() {
           <div className="landing-section__heading">
             <p className="landing-section__eyebrow">CAPABILITIES</p>
             <h2 id="capabilities-title">Explore security review workflows.</h2>
-            <p>Use the demo to understand how a review workspace can connect findings, code, and communication.</p>
+            <p>Evidence stays visible, scan states come from the backend, and sample data remains clearly separated in Demo Mode.</p>
           </div>
           <div className="landing-capability-grid">
-            <article><span><ShieldAlert size={18} /></span><h3>Severity-based triage</h3><p>Filter illustrative records by severity and inspect their categories.</p></article>
-            <article><span><Code2 size={18} /></span><h3>Finding and source detail</h3><p>Review sample evidence alongside the relevant Solidity excerpt.</p></article>
-            <article><span><GitBranch size={18} /></span><h3>Contract relationships</h3><p>Explore an illustrative call graph with an equivalent 2D view.</p></article>
-            <article><span><FileText size={18} /></span><h3>History and reports</h3><p>Browse seeded records and inspect a printable demo report.</p></article>
-            <article><span><Network size={18} /></span><h3>Display preferences</h3><p>Adjust appearance and explore accessible 2D fallbacks.</p></article>
+            <article><span><ShieldAlert size={18} /></span><h3>Severity-based triage</h3><p>Group findings by the severity returned from the analyzer.</p></article>
+            <article><span><Code2 size={18} /></span><h3>Finding and source detail</h3><p>Inspect the affected lines, excerpt, and available evidence.</p></article>
+            <article><span><GitBranch size={18} /></span><h3>Contract relationships</h3><p>Explore relationships in an optional graph with a 2D alternative.</p></article>
+            <article><span><FileText size={18} /></span><h3>History and reports</h3><p>Review persisted account scans and print a legible report.</p></article>
+            <article><span><Network size={18} /></span><h3>Secure by design</h3><p>Source is analyzed in a network-isolated, resource-limited worker.</p></article>
           </div>
-          <p className="landing-capabilities__disclaimer">These are product-demo capabilities, not claims of detection accuracy, prevention, or security assurance.</p>
+          <p className="landing-capabilities__disclaimer">Static analysis can miss vulnerabilities and produce findings that need independent validation.</p>
         </div>
       </section>
 
@@ -227,19 +226,19 @@ export function PublicEntryPage() {
 
       <section className="landing-final-cta" aria-labelledby="final-cta-title">
         <div className="landing-container landing-final-cta__inner">
-          <div><p className="landing-section__eyebrow">SMARTBOB · FRONTEND DEMO</p><h2 id="final-cta-title">Explore the smartBOB demo.</h2><p>Review illustrative findings and workflows with sample data. No real contract analysis is performed.</p></div>
-          <Link className="landing-button landing-button--primary" to="/login?mode=demo">Explore Demo <ArrowRight size={16} aria-hidden="true" /></Link>
+          <div><p className="landing-section__eyebrow">SMART CONTRACT REVIEW</p><h2 id="final-cta-title">Make your next review clearer.</h2><p>Sign in to submit source to the configured scanner, or explore the separate demo experience.</p></div>
+          <Link className="landing-button landing-button--primary" to="/login">Start scanning <ArrowRight size={16} aria-hidden="true" /></Link>
         </div>
       </section>
 
       <footer className="landing-footer">
         <div className="landing-container">
           <div className="landing-footer__main">
-            <Link className="landing-brand landing-brand--footer" to="/" aria-label="smartBOB home"><span className="landing-brand__mark"><img src="/smartbob-logo.jpg" alt="" /></span><span className="landing-brand__word"><span className="landing-brand__name">smart<span>BOB</span></span><small>Smart Contract Scanner</small></span></Link>
-            <p>Illustrative frontend demo. No real contract analysis is performed.</p>
-            <nav aria-label="Footer navigation">{sections.slice(0, 3).map((item) => <a key={item.href} href={item.href}>{item.label}</a>)}<Link to="/login">Sign in</Link><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link></nav>
+            <Link className="landing-brand landing-brand--footer" to="/" aria-label="smartBOB home"><span className="landing-brand__mark"><img src="/smartbob-mark-orange.png" alt="" /></span><span className="landing-brand__word"><span className="landing-brand__name">smart<span>BOB</span></span><small>Smart Contract Scanner</small></span></Link>
+            <p>Potential vulnerabilities, clearer evidence, and practical review workflows.</p>
+            <nav aria-label="Footer navigation">{sections.map((item) => <a key={item.href} href={item.href}>{item.label}</a>)}<Link to="/login">Sign in</Link><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link><a href="https://github.com/thusharks07-droid/SmartContract" target="_blank" rel="noreferrer">Repository</a></nav>
           </div>
-          <div className="landing-footer__bottom"><span>© {new Date().getFullYear()} smartBOB</span><span>DEMO MODE · MOCK DATA ONLY</span></div>
+          <div className="landing-footer__bottom"><span>© {new Date().getFullYear()} smartBOB</span><span>STATIC ANALYSIS · HUMAN REVIEW REQUIRED</span></div>
         </div>
       </footer>
     </main>

@@ -13,7 +13,7 @@ export function ReportLayout({ title, reportId, generatedAt, actions, cover, chi
   return (
     <article className="report-layout">
       <header className="report-layout__header">
-        <div className="report-layout__brand"><span className="brand-mark"><img src="/smartbob-logo.jpg" alt="" /></span><span>smartBOB <small>DEMO REPORT</small></span></div>
+        <div className="report-layout__brand"><span className="brand-mark"><img src="/smartbob-mark-orange.png" alt="" /></span><span>smartBOB <small>DEMO REPORT</small></span></div>
         <button className="button button--secondary no-print" type="button" onClick={() => window.print()}><Printer size={15} aria-hidden="true" />Print report</button>
         {actions}
       </header>

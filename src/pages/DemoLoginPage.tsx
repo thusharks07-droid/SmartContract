@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ArrowLeft, ArrowRight, Eye, EyeOff, Sparkles } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Eye, EyeOff, ShieldCheck } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
@@ -67,7 +67,7 @@ export function DemoLoginPage() {
     <main className="demo-entry-page">
       <header className="demo-entry-header">
         <Link className="demo-entry-brand" to="/" aria-label="smartBOB home">
-          <span className="demo-entry-brand__mark"><img src="/smartbob-logo.jpg" alt="" /></span>
+          <span className="demo-entry-brand__mark"><img src="/smartbob-mark-orange.png" alt="" /></span>
           <span className="demo-entry-brand__word"><strong>smart<span>BOB</span></strong><small>SMART CONTRACT SCANNER</small></span>
         </Link>
         <Link className="demo-entry-header__home" to="/"><ArrowLeft size={15} aria-hidden="true" /> Back to website</Link>
@@ -77,10 +77,16 @@ export function DemoLoginPage() {
         <section className="demo-entry-intro" aria-labelledby="demo-entry-intro-title">
           <p className="demo-entry-eyebrow"><span aria-hidden="true" /> SMARTBOB WORKSPACE</p>
           <h1 id="demo-entry-intro-title">Explore the security workspace.</h1>
-          <p className="demo-entry-intro__copy">Review example findings, source context, and remediation guidance in a frontend-only product demo.</p>
+          <p className="demo-entry-intro__copy">A clearer view of potential risk, source evidence, and remediation guidance—so you can make an informed review before deployment.</p>
+          <div className="demo-entry-mascot" aria-hidden="true">
+            <div className="demo-entry-mascot__halo" />
+            <img src="/smartbob-mark-orange.png" alt="" />
+            <span className="demo-entry-mascot__spark demo-entry-mascot__spark--one" />
+            <span className="demo-entry-mascot__spark demo-entry-mascot__spark--two" />
+          </div>
           <div className="demo-entry-proof" role="note">
-            <Sparkles size={17} aria-hidden="true" />
-            <span><strong>Illustrative data only</strong><small>No real contract analysis is performed.</small></span>
+            <ShieldCheck size={17} aria-hidden="true" />
+            <span><strong>Analysis with context</strong><small>Review evidence and validate suggested fixes independently.</small></span>
           </div>
         </section>
 

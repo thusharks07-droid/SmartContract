@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import importlib.util
 import json
+import socket
 import sys
 import threading
 import unittest
@@ -15,13 +16,27 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from api_server import create_server, parse_allowed_origins  # noqa: E402
+from api_server import AiRequestLimiter, create_server, parse_allowed_origins  # noqa: E402
 from queue_worker import QueueWorker  # noqa: E402
 from supabase_gateway import SupabaseGateway  # noqa: E402
 
 
 USER_A = "2a2f6a72-e91f-40de-86ab-3ef347cdac11"
 USER_B = "90711b9f-3fe1-4a49-9773-5a30a2cb31f0"
+FINDING_ID = "7ab4e654-d15f-4215-a845-42d52eae8a44"
+
+
+class FakeAiService:
+    def __init__(self) -> None:
+        self.calls = []
+
+    @staticmethod
+    def provider_status() -> dict:
+        return {"providers": {"groq": True, "gemini": True}, "primaryProvider": "groq", "fallbackProvider": "gemini"}
+
+    def explain(self, finding: dict, source_context: str, provider: str) -> dict:
+        self.calls.append((copy.deepcopy(finding), source_context, provider))
+        return {"summary": "AI explanation", "provider": "gemini", "model": "test-model", "generatedAt": "2026-10-15T00:00:00Z"}
 
 
 class FakeGateway:
@@ -109,7 +124,8 @@ class FakeGateway:
 class ApiAndQueueTests(unittest.TestCase):
     def setUp(self) -> None:
         self.gateway = FakeGateway()
-        self.server = create_server(self.gateway, object(), port=0)
+        self.ai = FakeAiService()
+        self.server = create_server(self.gateway, object(), port=0, ai_service=self.ai)
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
         self.base = f"http://127.0.0.1:{self.server.server_address[1]}"
@@ -268,10 +284,42 @@ class ApiAndQueueTests(unittest.TestCase):
         status, body = self.request_bytes("POST", "/api/scans", b"{")
         self.assertEqual(status, 400)
         self.assertEqual(body["error"]["code"], "invalid_json")
-        status, body = self.request_bytes("POST", "/api/scans", b"x" * 516_001)
+        host, port = self.server.server_address
+        with socket.create_connection((host, port), timeout=3) as connection:
+            connection.sendall(
+                f"POST /api/scans HTTP/1.1\r\nHost: {host}:{port}\r\n"
+                "Authorization: Bearer valid-a\r\nContent-Type: application/json\r\n"
+                "Content-Length: 3016001\r\nConnection: close\r\n\r\n".encode("ascii")
+            )
+            response = b""
+            while chunk := connection.recv(4096):
+                response += chunk
+        headers, body_bytes = response.split(b"\r\n\r\n", 1)
+        status = int(headers.splitlines()[0].split()[1])
+        body = json.loads(body_bytes)
         self.assertEqual(status, 413)
         self.assertEqual(body["error"]["code"], "request_too_large")
         self.assertEqual(self.gateway.scans, {})
+
+    def test_json_escaping_overhead_does_not_reject_source_with_many_newlines(self) -> None:
+        source = "pragma solidity 0.8.24;\n" + "\n" * 260_000 + "contract Newlines {}"
+        payload = self.payload(sourceCode=source)
+        raw = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+        self.assertGreater(len(raw), 516_000)
+
+        headers = {"Authorization": "Bearer valid-a", "Content-Type": "application/json",
+                   "Idempotency-Key": str(uuid.uuid4())}
+        request = urllib.request.Request(self.base + "/api/scans", data=raw, headers=headers, method="POST")
+        try:
+            with urllib.request.urlopen(request, timeout=3) as response:
+                status, body = response.status, json.loads(response.read())
+        except urllib.error.HTTPError as error:
+            with error:
+                status, body = error.code, json.loads(error.read())
+
+        self.assertEqual(status, 202)
+        self.assertEqual(body["scan"]["status"], "queued")
+        self.assertEqual(len(self.gateway.scans), 1)
 
     def test_findings_are_hidden_until_scan_is_completed(self) -> None:
         _, body = self.submit()
@@ -282,6 +330,55 @@ class ApiAndQueueTests(unittest.TestCase):
             self.assertEqual(status, 409)
             self.assertEqual(response["error"]["code"], "scan_not_completed")
         self.assertEqual(self.gateway.findings, [])
+
+    def test_ai_status_is_authenticated_and_never_returns_provider_keys(self) -> None:
+        status, body = self.request("GET", "/api/ai/status")
+        self.assertEqual(status, 200)
+        self.assertEqual(body["primaryProvider"], "groq")
+        self.assertEqual(body["fallbackProvider"], "gemini")
+        self.assertNotIn("key", json.dumps(body).lower())
+        self.assertEqual(self.request("GET", "/api/ai/status", token=None)[0], 401)
+
+    def test_ai_explanation_uses_only_completed_owned_saved_findings(self) -> None:
+        scan_id = str(uuid.uuid4())
+        self.gateway.scans[scan_id] = {
+            "id": scan_id, "user_id": USER_A, "status": "completed",
+            "source_code": "line 1\\nline 2\\nline 3\\nline 4\\nline 5\\nline 6\\nline 7",
+        }
+        self.gateway.findings.append({
+            "id": FINDING_ID, "scan_id": scan_id, "user_id": USER_A,
+            "rule_id": "reentrancy-eth", "severity": "high", "line_start": 4,
+            "code_excerpt": "call{value: amount}", "description": "Detector output",
+        })
+        path = f"/api/ai/scans/{scan_id}/findings/{FINDING_ID}/explanation"
+        status, body = self.request("POST", path, body={"provider": "automatic"})
+        self.assertEqual(status, 200)
+        self.assertEqual(body["explanation"]["provider"], "gemini")
+        self.assertEqual(self.ai.calls[0][1], "call{value: amount}")
+        self.assertEqual(self.ai.calls[0][2], "automatic")
+        self.assertEqual(self.gateway.scans[scan_id]["status"], "completed")
+        saved = next(row for row in self.gateway.findings if row["id"] == FINDING_ID)
+        self.assertEqual(saved["severity"], "high")
+        self.assertEqual(saved["code_excerpt"], "call{value: amount}")
+        self.assertEqual(self.request("POST", path, token="valid-b", body={"provider": "automatic"})[0], 404)
+        self.assertEqual(len(self.ai.calls), 1)
+
+        self.gateway.scans[scan_id]["status"] = "running"
+        self.assertEqual(self.request("POST", path, body={"provider": "automatic"})[0], 409)
+        self.assertEqual(len(self.ai.calls), 1)
+
+    def test_ai_endpoint_rejects_extra_fields_and_rate_limiter_is_per_user(self) -> None:
+        scan_id = str(uuid.uuid4())
+        path = f"/api/ai/scans/{scan_id}/findings/{FINDING_ID}/explanation"
+        status, body = self.request("POST", path, body={"provider": "groq", "sourceCode": "not accepted"})
+        self.assertEqual(status, 400)
+        self.assertEqual(body["error"]["code"], "invalid_body")
+        limiter = AiRequestLimiter(limit=2, window_seconds=60)
+        self.assertTrue(limiter.allow(USER_A, now=100))
+        self.assertTrue(limiter.allow(USER_A, now=101))
+        self.assertFalse(limiter.allow(USER_A, now=102))
+        self.assertTrue(limiter.allow(USER_B, now=102))
+        self.assertTrue(limiter.allow(USER_A, now=161))
 
     def test_worker_lifecycle_persists_findings_using_row_owner(self) -> None:
         key = str(uuid.uuid4())

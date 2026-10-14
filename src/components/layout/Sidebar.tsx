@@ -49,8 +49,8 @@ export function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile
         first.focus()
       }
     }
-    window.addEventListener('keydown', closeOnEscape)
-    return () => window.removeEventListener('keydown', closeOnEscape)
+    window.addEventListener('keydown', closeOnEscape, true)
+    return () => window.removeEventListener('keydown', closeOnEscape, true)
   }, [mobileOpen, onCloseMobile])
 
   const navLink = ({ label, path, icon: Icon, badge, badgeTone }: (typeof routeItems)[number]) => (
@@ -74,7 +74,7 @@ export function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile
       {isMobile && mobileOpen && <button className="mobile-scrim" type="button" aria-label="Close navigation menu" onClick={onCloseMobile} />}
       <aside id="app-navigation" ref={sidebarRef} className={`sidebar${compact ? ' sidebar--collapsed' : ''}${mobileOpen ? ' sidebar--mobile-open' : ''}`} aria-label="Main navigation" aria-hidden={isMobile && !mobileOpen}>
         <div className="sidebar__brand">
-          <span className="brand-mark" role={compact ? 'img' : undefined} aria-label={compact ? 'smartBOB logo' : undefined}><img src="/smartbob-logo.jpg" alt="" /></span>
+          <span className="brand-mark" role={compact ? 'img' : undefined} aria-label={compact ? 'smartBOB logo' : undefined}><img src="/smartbob-mark-orange.png" alt="" /></span>
           {!compact && <span className="brand-name">smart<span>BOB</span></span>}
         </div>
 

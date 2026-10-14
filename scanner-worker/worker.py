@@ -165,32 +165,36 @@ def run_scan(source: str, compiler_version: str, timeout_seconds: int = DEFAULT_
             stdout.start()
             stderr.start()
             try:
-                return_code = process.wait(timeout=timeout_seconds)
-            except subprocess.TimeoutExpired as exc:
-                _cleanup_container(job_id)
                 try:
-                    process.kill()
-                except OSError:
-                    pass
-                process.wait(timeout=10)
+                    return_code = process.wait(timeout=timeout_seconds)
+                except subprocess.TimeoutExpired as exc:
+                    _cleanup_container(job_id)
+                    try:
+                        process.kill()
+                    except OSError:
+                        pass
+                    process.wait(timeout=10)
+                    raise WorkerError(f"Analysis exceeded the {timeout_seconds}-second timeout.") from exc
                 stdout.join()
                 stderr.join()
-                raise WorkerError(f"Analysis exceeded the {timeout_seconds}-second timeout.") from exc
-            stdout.join()
-            stderr.join()
-            if stdout.overflow:
-                raise WorkerError("Analyzer output exceeded the configured output limit.")
-            if return_code != 0:
-                # Do not echo raw compiler diagnostics or source lines to terminal logs.
-                raise WorkerError("Slither could not compile or analyze this source (see local worker docs).")
-            try:
-                result = json.loads(stdout.data.decode("utf-8"))
-            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-                raise WorkerError("Analyzer returned an invalid result document.") from exc
-            result["scan_id"] = job_id.removeprefix("contractiq-")
-            result["source_hash"] = source_hash
-            result["compiler_version"] = compiler_version
-            return result
+                if stdout.overflow:
+                    raise WorkerError("Analyzer output exceeded the configured output limit.")
+                if return_code != 0:
+                    # Do not echo raw compiler diagnostics or source lines to terminal logs.
+                    raise WorkerError("Slither could not compile or analyze this source (see local worker docs).")
+                try:
+                    result = json.loads(stdout.data.decode("utf-8"))
+                except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                    raise WorkerError("Analyzer returned an invalid result document.") from exc
+                result["scan_id"] = job_id.removeprefix("contractiq-")
+                result["source_hash"] = source_hash
+                result["compiler_version"] = compiler_version
+                return result
+            finally:
+                stdout.join()
+                stderr.join()
+                process.stdout.close()
+                process.stderr.close()
     except FileNotFoundError as exc:
         raise WorkerError("Docker CLI was not found. Install/start Docker Desktop and enable Linux containers.") from exc
     finally:

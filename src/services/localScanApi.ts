@@ -1,5 +1,24 @@
 export type ScanStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'
 export type Severity = 'critical' | 'high' | 'medium' | 'low' | 'informational'
+export type AiProviderChoice = 'automatic' | 'groq' | 'gemini' | 'disabled'
+
+export type AiProviderStatus = {
+  providers: { groq: boolean; gemini: boolean }
+  primaryProvider: 'groq' | 'gemini'
+  fallbackProvider: 'groq' | 'gemini'
+}
+
+export type AiExplanation = {
+  summary: string
+  impact: string
+  evidence_explanation: string
+  remediation: string
+  verification_steps: string[]
+  limitations: string[]
+  provider: 'groq' | 'gemini'
+  model: string
+  generatedAt: string
+}
 
 export type ApiScan = {
   id: string
@@ -99,6 +118,23 @@ function parseFinding(value: unknown): ApiFinding {
   }
 }
 
+function parseAiExplanation(value: unknown): AiExplanation {
+  const row = asRecord(value)
+  const stringList = (entry: unknown) => {
+    if (!Array.isArray(entry) || entry.some((item) => typeof item !== 'string')) return invalidResponse()
+    return entry as string[]
+  }
+  if (typeof row.summary !== 'string' || typeof row.impact !== 'string' || typeof row.evidence_explanation !== 'string'
+      || typeof row.remediation !== 'string' || typeof row.model !== 'string' || typeof row.generatedAt !== 'string'
+      || (row.provider !== 'groq' && row.provider !== 'gemini')) return invalidResponse()
+  const verification_steps = stringList(row.verification_steps)
+  const limitations = stringList(row.limitations)
+  if (!limitations.length) return invalidResponse()
+  return { summary: row.summary, impact: row.impact, evidence_explanation: row.evidence_explanation,
+    remediation: row.remediation, verification_steps, limitations, provider: row.provider, model: row.model,
+    generatedAt: row.generatedAt }
+}
+
 export class ScanApiError extends Error {
   readonly code: string
   readonly status?: number
@@ -113,6 +149,7 @@ export class ScanApiError extends Error {
 
 const localDefault = 'http://127.0.0.1:8765'
 const requestTimeoutMs = 15_000
+const aiRequestTimeoutMs = 30_000
 const apiBase = (import.meta.env.VITE_CONTRACTIQ_API_URL?.trim() || (import.meta.env.DEV ? localDefault : '')).replace(/\/$/, '')
 
 export function makeIdempotencyKey(): string {
@@ -135,12 +172,12 @@ function baseUrl(): string {
   return apiBase
 }
 
-async function request<T>(path: string, accessToken: string, init: RequestInit = {}): Promise<T> {
+async function request<T>(path: string, accessToken: string, init: RequestInit = {}, timeoutMs = requestTimeoutMs): Promise<T> {
   if (!accessToken) throw new ScanApiError('not_authenticated', 'Your account session is missing. Sign in again to continue.')
   const url = `${baseUrl()}${path}`
   let response: Response
   const controller = new AbortController()
-  const timeout = window.setTimeout(() => controller.abort(), requestTimeoutMs)
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs)
   try {
     response = await fetch(url, {
       ...init,
@@ -174,6 +211,23 @@ async function request<T>(path: string, accessToken: string, init: RequestInit =
 }
 
 export const localScanApi = {
+  async getAiStatus(accessToken: string): Promise<AiProviderStatus> {
+    const result = asRecord(await request<unknown>('/api/ai/status', accessToken))
+    const providers = asRecord(result.providers)
+    if (typeof providers.groq !== 'boolean' || typeof providers.gemini !== 'boolean'
+        || (result.primaryProvider !== 'groq' && result.primaryProvider !== 'gemini')
+        || (result.fallbackProvider !== 'groq' && result.fallbackProvider !== 'gemini')) return invalidResponse()
+    return { providers: { groq: providers.groq, gemini: providers.gemini },
+      primaryProvider: result.primaryProvider, fallbackProvider: result.fallbackProvider }
+  },
+  async explainFinding(scanId: string, findingId: string, accessToken: string,
+                      provider: Exclude<AiProviderChoice, 'disabled'>): Promise<AiExplanation> {
+    const path = `/api/ai/scans/${encodeURIComponent(scanId)}/findings/${encodeURIComponent(findingId)}/explanation`
+    const result = asRecord(await request<unknown>(path, accessToken, {
+      method: 'POST', body: JSON.stringify({ provider }),
+    }, aiRequestTimeoutMs))
+    return parseAiExplanation(result.explanation)
+  },
   async submit(input: SubmitScanInput, accessToken: string, idempotencyKey: string): Promise<{ scan: ApiScan; replayed: boolean }> {
     const result = asRecord(await request<unknown>('/api/scans', accessToken, {
       method: 'POST',

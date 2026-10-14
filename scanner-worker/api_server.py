@@ -6,17 +6,22 @@ import hashlib
 import json
 import re
 import threading
+import time
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 from urllib.parse import unquote, urlsplit
 
+from ai_explanations import AiError, AiExplanationService
 from supabase_gateway import AuthenticationError, UpstreamError
 from worker import MAX_SOURCE_BYTES, SUPPORTED_COMPILERS
 
 
 IDEMPOTENCY_NAMESPACE = uuid.UUID("96c8847a-6c12-45fc-b11e-f63f84c03ac2")
-MAX_REQUEST_BYTES = MAX_SOURCE_BYTES + 16_000
+# JSON can expand source bytes up to six ASCII bytes each (for escaped control
+# characters). Bound the wire body independently, then enforce the source limit
+# on the decoded UTF-8 content in ScanApi.submit.
+MAX_REQUEST_BYTES = MAX_SOURCE_BYTES * 6 + 16_000
 IMPORT_PATTERN = re.compile(r"\bimport\s*(?:\"|'|\{|\*)")
 SCAN_ID_PATTERN = re.compile(r"^[0-9a-fA-F-]{36}$")
 DEFAULT_ALLOWED_ORIGINS = {"http://localhost:5173", "http://localhost:5174", "http://127.0.0.1:5173", "http://127.0.0.1:5174"}
@@ -221,10 +226,70 @@ class ScanApi:
             raise ApiError(404, "not_found", "Source was not found for this account.")
         return {"sourceCode": source, "sourceFilename": row.get("source_filename")}
 
+    def explain_finding(self, owner_id: str, scan_id: str, finding_id: str, provider: str,
+                        ai_service: AiExplanationService) -> dict:
+        owner_id = _uuid(owner_id, "Verified owner ID")
+        scan_id = _uuid(scan_id, "Scan ID")
+        finding_id = _uuid(finding_id, "Finding ID")
+        scan = self.gateway.get_scan(scan_id, owner_id)
+        if not scan:
+            raise ApiError(404, "not_found", "Scan was not found for this account.")
+        if scan.get("status") != "completed":
+            raise ApiError(409, "scan_not_completed", "AI explanations are available only for a completed scan.")
+        findings = self.gateway.list_findings(scan_id, owner_id)
+        finding = next((row for row in findings if row.get("id") == finding_id and row.get("scan_id") == scan_id and row.get("user_id") == owner_id), None)
+        if not finding:
+            raise ApiError(404, "not_found", "Finding was not found for this account.")
+        source_context = finding.get("code_excerpt")
+        if not isinstance(source_context, str) or not source_context.strip():
+            full_source = scan.get("source_code")
+            start = finding.get("line_start")
+            if isinstance(full_source, str) and isinstance(start, int) and start > 0:
+                lines = full_source.splitlines()
+                source_context = "\n".join(lines[max(0, start - 4):min(len(lines), start + 3)])
+            else:
+                source_context = ""
+        if len(source_context) > 4_000:
+            source_context = source_context[:4_000]
+        try:
+            explanation = ai_service.explain(finding, source_context, provider)
+        except AiError as exc:
+            raise ApiError(exc.status, exc.code, exc.message) from None
+        return {"explanation": explanation}
+
+
+class AiRequestLimiter:
+    """Small in-memory per-user guard for the optional explanation endpoint."""
+
+    def __init__(self, limit: int = 10, window_seconds: int = 60) -> None:
+        self.limit = limit
+        self.window_seconds = window_seconds
+        self._requests: dict[str, list[float]] = {}
+        self._lock = threading.Lock()
+
+    def allow(self, owner_id: str, now: float | None = None) -> bool:
+        current = time.monotonic() if now is None else now
+        cutoff = current - self.window_seconds
+        with self._lock:
+            recent = [stamp for stamp in self._requests.get(owner_id, []) if stamp > cutoff]
+            if len(recent) >= self.limit:
+                self._requests[owner_id] = recent
+                return False
+            recent.append(current)
+            self._requests[owner_id] = recent
+            if len(self._requests) > 2_000:
+                self._requests = {key: values for key, values in self._requests.items() if values and values[-1] > cutoff}
+            return True
+
 
 def create_server(gateway, queue_worker, port: int = 8765, *, host: str = "127.0.0.1",
-                  allowed_origins: set[str] | None = None, max_concurrency: int = 16) -> ThreadingHTTPServer:
+                  allowed_origins: set[str] | None = None, max_concurrency: int = 16,
+                  ai_service: AiExplanationService | None = None) -> ThreadingHTTPServer:
     api = ScanApi(gateway)
+    ai = ai_service or AiExplanationService()
+    ai_slots = threading.BoundedSemaphore(2)
+    ai_limiter = AiRequestLimiter()
+    scan_limiter = AiRequestLimiter(limit=30, window_seconds=60)
     allowed = allowed_origins if allowed_origins is not None else parse_allowed_origins(None)
     if not 1 <= max_concurrency <= 128:
         raise ValueError("max_concurrency must be between 1 and 128.")
@@ -255,7 +320,7 @@ def create_server(gateway, queue_worker, port: int = 8765, *, host: str = "127.0
             self.end_headers()
             self.wfile.write(encoded)
 
-        def _body(self) -> Any:
+        def _body(self, max_bytes: int = MAX_REQUEST_BYTES) -> Any:
             raw_length = self.headers.get("Content-Length")
             if raw_length is None:
                 raise ApiError(411, "content_length_required", "Content-Length is required.")
@@ -263,7 +328,7 @@ def create_server(gateway, queue_worker, port: int = 8765, *, host: str = "127.0
                 length = int(raw_length)
             except ValueError:
                 raise ApiError(400, "invalid_content_length", "Content-Length is invalid.") from None
-            if length < 0 or length > MAX_REQUEST_BYTES:
+            if length < 0 or length > max_bytes:
                 raise ApiError(413, "request_too_large", "Request exceeds the local API size limit.")
             try:
                 return json.loads(self.rfile.read(length))
@@ -292,9 +357,30 @@ def create_server(gateway, queue_worker, port: int = 8765, *, host: str = "127.0
                 if path.startswith("/api/"):
                     owner_id = self._owner()
                     if method == "POST" and path == "/api/scans":
+                        if not scan_limiter.allow(owner_id):
+                            raise ApiError(429, "scan_rate_limited", "Scan submission limit reached. Wait a minute before submitting more source.")
                         key = self.headers.get("Idempotency-Key", "")
                         scan, replayed = api.submit(owner_id, key, self._body())
                         self._send(200 if replayed else 202, {"scan": scan, "replayed": replayed})
+                        return
+                    if method == "GET" and path == "/api/ai/status":
+                        self._send(200, ai.provider_status())
+                        return
+                    explanation_match = re.fullmatch(r"/api/ai/scans/([^/]+)/findings/([^/]+)/explanation", path)
+                    if method == "POST" and explanation_match:
+                        if not ai_limiter.allow(owner_id):
+                            raise ApiError(429, "ai_rate_limited", "AI explanation limit reached. Wait a minute before trying again.")
+                        if not ai_slots.acquire(blocking=False):
+                            raise ApiError(503, "ai_busy", "AI explanations are busy. Your scanner results remain available; retry shortly.")
+                        try:
+                            payload = self._body(16_000)
+                            if not isinstance(payload, dict) or set(payload) != {"provider"} or not isinstance(payload.get("provider"), str):
+                                raise ApiError(400, "invalid_body", "Request must contain only a provider choice.")
+                            result = api.explain_finding(owner_id, unquote(explanation_match.group(1)),
+                                                         unquote(explanation_match.group(2)), payload["provider"], ai)
+                        finally:
+                            ai_slots.release()
+                        self._send(200, result)
                         return
                     if method == "GET" and path == "/api/scans":
                         self._send(200, {"scans": api.list_scans(owner_id)})

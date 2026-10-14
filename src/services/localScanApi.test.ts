@@ -13,6 +13,29 @@ const jsonResponse = (body: unknown, status = 200) => ({ ok: status >= 200 && st
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.useRealTimers() })
 
 describe('local scanner API service', () => {
+  it('reads provider readiness and validates an AI explanation without sending source or scanner data', async () => {
+    const explanation = {
+      summary: 'A call happens before the state update.', impact: 'A callback may re-enter.',
+      evidence_explanation: 'The detector points to the external call.', remediation: 'Update state before calling external code.',
+      verification_steps: ['Add a regression test.'], limitations: ['Static analysis does not prove exploitability.'],
+      provider: 'gemini', model: 'gemini-2.5-flash', generatedAt: '2026-10-15T00:00:00Z',
+    }
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({ providers: { groq: true, gemini: true }, primaryProvider: 'groq', fallbackProvider: 'gemini' }))
+      .mockResolvedValueOnce(jsonResponse({ explanation }))
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(localScanApi.getAiStatus('account-token')).resolves.toMatchObject({ providers: { groq: true, gemini: true } })
+    await expect(localScanApi.explainFinding(scan.id, 'finding-id', 'account-token', 'automatic')).resolves.toMatchObject({ provider: 'gemini', summary: explanation.summary })
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      'http://127.0.0.1:8765/api/ai/status',
+      `http://127.0.0.1:8765/api/ai/scans/${scan.id}/findings/finding-id/explanation`,
+    ])
+    const [, request] = fetchMock.mock.calls[1] as [string, RequestInit]
+    expect(new Headers(request.headers).get('Authorization')).toBe('Bearer account-token')
+    expect(JSON.parse(String(request.body))).toEqual({ provider: 'automatic' })
+    expect(JSON.parse(String(request.body))).not.toHaveProperty('sourceCode')
+  })
+
   it('submits with bearer auth and idempotency key without a client owner ID', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ scan, replayed: false }, 202))
     vi.stubGlobal('fetch', fetchMock)

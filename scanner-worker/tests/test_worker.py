@@ -33,6 +33,8 @@ class WorkerValidationTests(unittest.TestCase):
     def test_source_size_is_limited(self) -> None:
         with self.assertRaises(worker.InputError):
             worker.run_scan("x" * (worker.MAX_SOURCE_BYTES + 1), "0.8.24")
+        with self.assertRaises(worker.InputError):
+            worker.run_scan("", "0.8.24")
 
     def test_imports_are_rejected_without_resolution(self) -> None:
         with self.assertRaisesRegex(worker.InputError, "Imports are not supported"):
@@ -69,6 +71,9 @@ class WorkerValidationTests(unittest.TestCase):
         self.assertEqual(result["findings"][0]["impact"], "high")
         self.assertEqual(result["findings"][0]["severity"], "high")
         self.assertEqual(result["findings"][0]["line_start"], 3)
+        self.assertEqual(result["findings"][0]["code_excerpt"], " function f() external {}")
+        self.assertIn("reentrancy guard", result["findings"][0]["recommendation"])
+        self.assertEqual(result["findings"][0]["evidence"]["elements"][0]["lines"], [3])
         self.assertEqual(result["findings"][0]["verification"]["status"], "not_verified")
         self.assertIn("no completeness", result["summary"]["disclaimer"])
         self.assertIn("contract.sol", result["findings"][0]["description"])

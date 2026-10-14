@@ -4,7 +4,6 @@ import type { Finding, Scan, ScanConfiguration, Severity } from '../types/domain
 import type { Database, Json } from '../lib/supabase/database.types'
 import { supabase, supabaseConfiguration } from '../lib/supabase/client'
 
-const MAX_SOURCE_LENGTH = 500_000
 const PAGE_LIMIT = 250
 type PersistedVerification = Omit<Finding['verification'], 'banner'>
 export type PersistedFinding = Omit<Finding, 'verification'> & { verification: PersistedVerification }
@@ -67,7 +66,7 @@ function mapScan(row: ScanRow): Scan {
     inputType: row.input_type,
     notes: row.notes ?? undefined,
     summary: row.status === 'queued'
-      ? 'Queued submission. No analyzer is currently connected; no security analysis has run.'
+      ? 'Queued submission. Analysis has not completed.'
       : `Status: ${row.status}. The result reflects only data returned by the configured trusted service.`,
   }
 }
@@ -134,16 +133,6 @@ function throwDataError(error: { message: string; code?: string }): never {
   throw new SupabaseDataError(error.message, error.code ?? 'database_error')
 }
 
-export type QueuedSubmission = {
-  contractName: string
-  sourceCode: string
-  sourceFilename?: string
-  inputType: 'upload' | 'paste'
-  compilerVersion?: string
-  configuration?: Partial<ScanConfiguration>
-  notes?: string
-}
-
 export type PersistedWorkspaceReport = {
   generatedAt: string
   totalScans: number
@@ -178,42 +167,6 @@ export const supabaseDataService = {
     const { data, error } = await client.from('contractiq_scans').select('source_code').eq('id', scanId).eq('user_id', userId).maybeSingle()
     if (error) throwDataError(error)
     return data?.source_code ?? null
-  },
-
-  async createQueuedSubmission(input: QueuedSubmission): Promise<Scan> {
-    if (input.sourceCode.length < 1 || input.sourceCode.length > MAX_SOURCE_LENGTH) {
-      throw new SupabaseDataError(`Source must contain between 1 and ${MAX_SOURCE_LENGTH.toLocaleString()} characters.`, 'invalid_source_length')
-    }
-    const client = requireClient()
-    const userId = await requireUserId(client)
-    const configuration = input.configuration ?? {}
-    const options: Json = {
-      optimizationEnabled: configuration.optimizationEnabled ?? false,
-      optimizationRuns: configuration.optimizationRuns ?? 200,
-      evmVersion: configuration.evmVersion ?? 'Default',
-      includeInformational: configuration.includeInformational ?? true,
-      analysisOptions: configuration.analysisOptions ?? { reentrancy: true, accessControl: true, staticAnalysis: true },
-    }
-    const { data, error } = await client.from('contractiq_scans').insert({
-      user_id: userId,
-      contract_name: input.contractName.trim() || 'Untitled Contract',
-      source_filename: input.sourceFilename?.trim() || null,
-      source_code: input.sourceCode,
-      input_type: input.inputType,
-      compiler_version: input.compilerVersion ?? configuration.compilerVersion ?? null,
-      options,
-      notes: input.notes?.trim() || null,
-    }).select('*').single()
-    if (error) throwDataError(error)
-    return mapScan(data)
-  },
-
-  async deleteScan(scanId: string): Promise<void> {
-    const client = requireClient()
-    const userId = await requireUserId(client)
-    const { data, error } = await client.from('contractiq_scans').delete().eq('id', scanId).eq('user_id', userId).select('id').maybeSingle()
-    if (error) throwDataError(error)
-    if (!data) throw new SupabaseDataError('The scan was not found or is not available to this account.', 'not_found')
   },
 
   async listFindings(scanId: string): Promise<PersistedFinding[]> {

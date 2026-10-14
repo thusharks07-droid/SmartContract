@@ -16,6 +16,11 @@ MAX_SOURCE_BYTES = 500_000
 IMPORT_PATTERN = re.compile(r"\bimport\s*(?:\"|'|\{|\*)")
 IMPACT = {"high": "high", "medium": "medium", "low": "low", "informational": "informational", "optimization": "informational"}
 CONFIDENCE = {"high": "high", "medium": "medium", "low": "low"}
+RECOMMENDATIONS = {
+    "reentrancy-eth": "Apply checks-effects-interactions before external calls and consider a reentrancy guard; review all external call paths.",
+    "suicidal": "Restrict contract destruction to an explicitly authorized account or remove the destruction path.",
+    "arbitrary-send-eth": "Constrain recipient and amount to an explicitly authorized or user-owned value flow.",
+}
 
 
 def normalize(slither_result: dict, source: str, source_hash: str) -> dict:
@@ -59,7 +64,10 @@ def normalize(slither_result: dict, source: str, source_hash: str) -> dict:
             "line_start": start,
             "line_end": end,
             "code_excerpt": code_excerpt,
-            "recommendation": "Review this detector result and independently validate an appropriate mitigation.",
+            "recommendation": RECOMMENDATIONS.get(
+                str(item.get("check", "")),
+                "Review this detector result and independently validate an appropriate mitigation.",
+            ),
             "evidence": {"elements": compact_elements},
             "verification": {"status": "not_verified", "engine": "slither"},
         })

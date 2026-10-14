@@ -7,13 +7,14 @@ import { AccountDashboardPage, AccountFindingDetailsPage, AccountScanDetailsPage
 import { AccountReportPage } from './AccountWorkspacePages'
 import { NewScanPage } from './NewScanPage'
 import { localScanApi } from '../services/localScanApi'
+import { settingsService } from '../services/settingsService'
 import { ThemeProvider } from '../state/ThemeProvider'
 import { ToastProvider } from '../state/ToastProvider'
 
 const workspaceMode = vi.hoisted(() => ({ current: 'account' as 'account' | 'demo', token: 'account-token' }))
 vi.mock('../state/useWorkspaceMode', () => ({ useWorkspaceMode: () => ({ mode: workspaceMode.current, accessToken: workspaceMode.token }) }))
 vi.mock('../services/localScanApi', () => ({
-  localScanApi: { submit: vi.fn(), getScan: vi.fn(), getSource: vi.fn(), listFindings: vi.fn(), listScans: vi.fn() },
+  localScanApi: { submit: vi.fn(), getScan: vi.fn(), getSource: vi.fn(), listFindings: vi.fn(), listScans: vi.fn(), explainFinding: vi.fn(), getAiStatus: vi.fn() },
   makeIdempotencyKey: () => 'd7b8ed45-1384-4c15-9177-15a17b5fc012',
   ScanApiError: class ScanApiError extends Error { code = 'test'; status = 500 },
 }))
@@ -85,6 +86,41 @@ describe('account workspace integration', () => {
     expect(screen.getByText('Review state update ordering.')).toBeTruthy()
     expect(screen.getByText(/This result is not independently verified/)).toBeTruthy()
     expect(screen.queryByText(/Suggested pattern/)).toBeNull()
+  })
+
+  it('requests an AI explanation for the saved finding without resubmitting the scan', async () => {
+    vi.mocked(localScanApi.getScan).mockResolvedValue(accountScan('completed'))
+    vi.mocked(localScanApi.listFindings).mockResolvedValue([finding])
+    vi.mocked(localScanApi.getSource).mockResolvedValue({ sourceCode: 'contract Vault {}', sourceFilename: 'Vault.sol' })
+    settingsService.set({ aiProvider: 'automatic' })
+    vi.mocked(localScanApi.explainFinding).mockResolvedValue({
+      summary: 'An external call precedes the state update.', impact: 'A callback may re-enter.',
+      evidence_explanation: 'The source excerpt shows the call before accounting changes.', remediation: 'Update state before the external call.',
+      verification_steps: ['Add a reentrant callback regression test.'], limitations: ['Static analysis does not prove exploitability.'],
+      provider: 'gemini', model: 'test-model', generatedAt: '2026-10-15T00:00:00Z',
+    })
+    render(<MemoryRouter initialEntries={[`/app/scans/${id}/findings/finding-1`]}><Routes><Route path="/app/scans/:scanId/findings/:findingId" element={<AccountFindingDetailsPage />} /></Routes></MemoryRouter>)
+    fireEvent.click(await screen.findByRole('button', { name: 'Explain finding' }))
+    expect(await screen.findByText('An external call precedes the state update.')).toBeTruthy()
+    expect(screen.getByText(/AI generated · gemini · test-model/)).toBeTruthy()
+    expect(localScanApi.explainFinding).toHaveBeenCalledWith(id, 'finding-1', 'account-token', 'automatic')
+    expect(localScanApi.submit).not.toHaveBeenCalled()
+    expect(screen.getByText(/limited source excerpt are sent/)).toBeTruthy()
+  })
+
+  it('keeps the saved finding visible when its optional AI explanation fails', async () => {
+    vi.mocked(localScanApi.getScan).mockResolvedValue(accountScan('completed'))
+    vi.mocked(localScanApi.listFindings).mockResolvedValue([finding])
+    vi.mocked(localScanApi.getSource).mockResolvedValue({ sourceCode: 'contract Vault {}', sourceFilename: 'Vault.sol' })
+    settingsService.set({ aiProvider: 'automatic' })
+    vi.mocked(localScanApi.explainFinding).mockRejectedValue(new Error('provider unavailable'))
+    render(<MemoryRouter initialEntries={[`/app/scans/${id}/findings/finding-1`]}><Routes><Route path="/app/scans/:scanId/findings/:findingId" element={<AccountFindingDetailsPage />} /></Routes></MemoryRouter>)
+    fireEvent.click(await screen.findByRole('button', { name: 'Explain finding' }))
+    expect((await screen.findByRole('alert')).textContent).toContain('The local scan API could not complete the request.')
+    expect(screen.getByRole('heading', { name: 'Reentrancy possibility' })).toBeTruthy()
+    expect(screen.getByText('External call before state update.')).toBeTruthy()
+    expect(screen.getByText('Review state update ordering.')).toBeTruthy()
+    expect(localScanApi.submit).not.toHaveBeenCalled()
   })
 
   it('polls queued/running scans and stops polling after worker completion', async () => {

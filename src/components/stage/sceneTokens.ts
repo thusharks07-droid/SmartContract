@@ -1,4 +1,4 @@
-/** Shared visual and runtime budgets for the optional ContractIQ stage scenes. */
+/** Shared visual and runtime budgets for the optional smartBOB stage scenes. */
 export const sceneTokens = {
   camera: { fov: 38 },
   hoverDolly: { minPercent: -4, maxPercent: 4, activeScale: 0.96 },
