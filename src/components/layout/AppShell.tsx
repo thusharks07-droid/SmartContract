@@ -25,7 +25,7 @@ export function AppShell() {
             <Outlet />
           </div>
         </main>
-        <footer className="app-footer">ContractIQ <span>·</span> {mode === 'account' ? 'Local static-analysis workspace' : 'Frontend demo · illustrative mock data'}</footer>
+        <footer className="app-footer">smartBOB <span>·</span> {mode === 'account' ? 'Local static-analysis workspace' : 'Frontend demo · illustrative mock data'}</footer>
       </div>
     </div>
   )

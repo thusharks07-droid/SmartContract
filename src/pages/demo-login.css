@@ -20,6 +20,7 @@
 }
 .demo-entry-brand { display: inline-flex; align-items: center; gap: 10px; color: #152738; text-decoration: none; }
 .demo-entry-brand__mark { display: grid; width: 35px; height: 35px; place-items: center; border: 1px solid #bfd6e1; border-radius: 9px; color: #26799c; background: #eaf4f8; }
+.demo-entry-brand__mark img { display: block; width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
 .demo-entry-brand__word { display: grid; gap: 4px; font-size: 15px; font-weight: 740; letter-spacing: -.035em; line-height: 1; }
 .demo-entry-brand__word strong { color: #152738; font-weight: inherit; }
 .demo-entry-brand__word strong > span { color: #277c9f; }

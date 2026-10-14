@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Shield } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Badge } from '../ui/Badge'
 import { routeItems, utilityItems } from '../../types/navigation'
 import { UserMenu } from './UserMenu'
@@ -74,8 +74,8 @@ export function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile
       {isMobile && mobileOpen && <button className="mobile-scrim" type="button" aria-label="Close navigation menu" onClick={onCloseMobile} />}
       <aside id="app-navigation" ref={sidebarRef} className={`sidebar${compact ? ' sidebar--collapsed' : ''}${mobileOpen ? ' sidebar--mobile-open' : ''}`} aria-label="Main navigation" aria-hidden={isMobile && !mobileOpen}>
         <div className="sidebar__brand">
-          <span className="brand-mark" aria-hidden="true"><Shield size={19} strokeWidth={2.2} /></span>
-          {!compact && <span className="brand-name">Contract<span>IQ</span></span>}
+          <span className="brand-mark" role={compact ? 'img' : undefined} aria-label={compact ? 'smartBOB logo' : undefined}><img src="/smartbob-logo.jpg" alt="" /></span>
+          {!compact && <span className="brand-name">smart<span>BOB</span></span>}
         </div>
 
         <div className="sidebar__section-label">WORKSPACE</div>

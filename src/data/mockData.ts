@@ -29,7 +29,7 @@ function verification(id: string, findingId: string, status: VerificationStatus,
     expectedBehavior: 'The documented control flow should match the intended contract design after manual review.',
     observedBehavior: 'No execution was performed. This field describes only the seeded demo fixture.',
     stateChanges: 'None recorded; no transaction or state-changing action occurred.',
-    executionEnvironment: 'ContractIQ frontend demo · local fixture · no EVM instance',
+    executionEnvironment: 'smartBOB frontend demo · local fixture · no EVM instance',
     evidenceRefs: [findingId],
   }
 }

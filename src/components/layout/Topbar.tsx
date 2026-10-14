@@ -26,7 +26,7 @@ export function Topbar({ title, mobileNavOpen, onOpenMobileNav }: TopbarProps) {
     <header className="topbar">
       <button className="icon-button topbar__mobile-menu" type="button" onClick={onOpenMobileNav} aria-label="Open navigation menu" aria-expanded={mobileNavOpen} aria-controls="app-navigation"><Menu size={19} aria-hidden="true" /></button>
       <div className="topbar__context" aria-label={`Current page: ${title}`}>
-        <span className="topbar__eyebrow">CONTRACTIQ</span>
+        <span className="topbar__eyebrow">SMARTBOB</span>
         <span className="topbar__divider" aria-hidden="true">/</span>
         <span className="topbar__product">{title}</span>
       </div>

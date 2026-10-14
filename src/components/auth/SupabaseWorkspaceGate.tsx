@@ -25,7 +25,7 @@ export function SupabaseWorkspaceGate() {
         <Shield size={24} aria-hidden="true" />
         <h1 id="account-workspace-title">Account sign-in is connected.</h1>
         <p>
-          Account-backed scans and findings are not wired into this workspace yet. The existing ContractIQ pages use illustrative demo records, so they are not shown as data belonging to this account.
+          Account-backed scans and findings are not wired into this workspace yet. The existing smartBOB pages use illustrative demo records, so they are not shown as data belonging to this account.
         </p>
         <p role="note">No real contract analysis is available. The scanner remains unconfigured.</p>
         {error && <p role="alert">{error}</p>}

@@ -51,7 +51,7 @@ function ProductPreview() {
     <figure className="landing-preview" aria-label="Static product preview showing deterministic demo dashboard data. This preview is illustrative and not interactive.">
       <div className="landing-preview__windowbar" aria-hidden="true">
         <span className="landing-preview__window-dots"><i /><i /><i /></span>
-        <span className="landing-preview__window-label"><Shield size={12} /> ContractIQ workspace</span>
+        <span className="landing-preview__window-label"><Shield size={12} /> smartBOB workspace</span>
         <span className="landing-preview__window-mode">DEMO</span>
       </div>
       <div className="landing-preview__body">
@@ -109,9 +109,9 @@ export function PublicEntryPage() {
       <a className="landing-skip-link" href="#main-content">Skip to content</a>
       <header className="landing-header">
         <div className="landing-container landing-header__inner">
-          <Link className="landing-brand" to="/" aria-label="ContractIQ home">
-            <span className="landing-brand__mark"><Shield size={19} strokeWidth={2.15} aria-hidden="true" /></span>
-            <span className="landing-brand__word"><span className="landing-brand__name">Contract<span>IQ</span></span><small>Intelligent Smart Contract Security</small></span>
+          <Link className="landing-brand" to="/" aria-label="smartBOB home">
+            <span className="landing-brand__mark"><img src="/smartbob-logo.jpg" alt="" /></span>
+            <span className="landing-brand__word"><span className="landing-brand__name">smart<span>BOB</span></span><small>Smart Contract Scanner</small></span>
           </Link>
           <nav className="landing-nav landing-nav--desktop" aria-label="Main navigation">
             {sections.map((item) => <a key={item.href} href={item.href}>{item.label}</a>)}
@@ -163,7 +163,7 @@ export function PublicEntryPage() {
           <div className="landing-section__heading">
             <p className="landing-section__eyebrow">A CLEARER REVIEW WORKSPACE</p>
             <h2 id="product-title">Explore the details that matter.</h2>
-            <p>ContractIQ brings illustrative findings and their supporting context into one focused interface.</p>
+            <p>smartBOB brings illustrative findings and their supporting context into one focused interface.</p>
           </div>
           <div className="landing-feature-grid">
             {featureCards.map(({ icon: Icon, title, body }, index) => <article className="landing-feature-card" key={title}>
@@ -227,7 +227,7 @@ export function PublicEntryPage() {
 
       <section className="landing-final-cta" aria-labelledby="final-cta-title">
         <div className="landing-container landing-final-cta__inner">
-          <div><p className="landing-section__eyebrow">CONTRACTIQ · FRONTEND DEMO</p><h2 id="final-cta-title">Explore the ContractIQ demo.</h2><p>Review illustrative findings and workflows with sample data. No real contract analysis is performed.</p></div>
+          <div><p className="landing-section__eyebrow">SMARTBOB · FRONTEND DEMO</p><h2 id="final-cta-title">Explore the smartBOB demo.</h2><p>Review illustrative findings and workflows with sample data. No real contract analysis is performed.</p></div>
           <Link className="landing-button landing-button--primary" to="/login?mode=demo">Explore Demo <ArrowRight size={16} aria-hidden="true" /></Link>
         </div>
       </section>
@@ -235,11 +235,11 @@ export function PublicEntryPage() {
       <footer className="landing-footer">
         <div className="landing-container">
           <div className="landing-footer__main">
-            <Link className="landing-brand landing-brand--footer" to="/" aria-label="ContractIQ home"><span className="landing-brand__mark"><Shield size={18} aria-hidden="true" /></span><span className="landing-brand__word"><span className="landing-brand__name">Contract<span>IQ</span></span><small>Intelligent Smart Contract Security</small></span></Link>
+            <Link className="landing-brand landing-brand--footer" to="/" aria-label="smartBOB home"><span className="landing-brand__mark"><img src="/smartbob-logo.jpg" alt="" /></span><span className="landing-brand__word"><span className="landing-brand__name">smart<span>BOB</span></span><small>Smart Contract Scanner</small></span></Link>
             <p>Illustrative frontend demo. No real contract analysis is performed.</p>
             <nav aria-label="Footer navigation">{sections.slice(0, 3).map((item) => <a key={item.href} href={item.href}>{item.label}</a>)}<Link to="/login">Sign in</Link><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link></nav>
           </div>
-          <div className="landing-footer__bottom"><span>© {new Date().getFullYear()} ContractIQ</span><span>DEMO MODE · MOCK DATA ONLY</span></div>
+          <div className="landing-footer__bottom"><span>© {new Date().getFullYear()} smartBOB</span><span>DEMO MODE · MOCK DATA ONLY</span></div>
         </div>
       </footer>
     </main>

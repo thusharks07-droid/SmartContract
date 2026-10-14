@@ -28,7 +28,7 @@ function AppNotFound() {
   const { isAuthenticated } = useDemoAuth()
   const { pathname } = useLocation()
   const homePath = isAuthenticated ? '/app/dashboard' : '/'
-  const homeLabel = isAuthenticated ? 'Return to Security Overview' : 'Return to ContractIQ'
+  const homeLabel = isAuthenticated ? 'Return to Security Overview' : 'Return to smartBOB'
   return <main className="public-entry public-entry--not-found"><section className="public-info"><p className="eyebrow">404 · DEMO WORKSPACE</p><SearchX size={24} aria-hidden="true" /><h1>Page not found</h1><p>No page is registered at <code>{pathname}</code>.</p><Link className="button button--primary" to={homePath}><ArrowLeft size={14} />{homeLabel}</Link></section></main>
 }
 

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ArrowLeft, ArrowRight, Eye, EyeOff, Shield, Sparkles } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Eye, EyeOff, Sparkles } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { z } from 'zod'
@@ -66,16 +66,16 @@ export function DemoLoginPage() {
   return (
     <main className="demo-entry-page">
       <header className="demo-entry-header">
-        <Link className="demo-entry-brand" to="/" aria-label="ContractIQ home">
-          <span className="demo-entry-brand__mark"><Shield size={18} aria-hidden="true" /></span>
-          <span className="demo-entry-brand__word"><strong>Contract<span>IQ</span></strong><small>INTELLIGENT SMART CONTRACT SECURITY</small></span>
+        <Link className="demo-entry-brand" to="/" aria-label="smartBOB home">
+          <span className="demo-entry-brand__mark"><img src="/smartbob-logo.jpg" alt="" /></span>
+          <span className="demo-entry-brand__word"><strong>smart<span>BOB</span></strong><small>SMART CONTRACT SCANNER</small></span>
         </Link>
         <Link className="demo-entry-header__home" to="/"><ArrowLeft size={15} aria-hidden="true" /> Back to website</Link>
       </header>
 
       <div className="demo-entry-layout">
         <section className="demo-entry-intro" aria-labelledby="demo-entry-intro-title">
-          <p className="demo-entry-eyebrow"><span aria-hidden="true" /> CONTRACTIQ WORKSPACE</p>
+          <p className="demo-entry-eyebrow"><span aria-hidden="true" /> SMARTBOB WORKSPACE</p>
           <h1 id="demo-entry-intro-title">Explore the security workspace.</h1>
           <p className="demo-entry-intro__copy">Review example findings, source context, and remediation guidance in a frontend-only product demo.</p>
           <div className="demo-entry-proof" role="note">
@@ -88,7 +88,7 @@ export function DemoLoginPage() {
           <div className="demo-login-card__heading">
             <p className="demo-login-card__eyebrow">SUPABASE ACCOUNT</p>
             <h2 id="demo-login-title">{accountMode === 'sign-in' ? 'Sign in to your account' : 'Create an account'}</h2>
-            <p>Account credentials are sent directly to Supabase Auth. ContractIQ does not store passwords. Account access does not enable real contract analysis.</p>
+            <p>Account credentials are sent directly to Supabase Auth. smartBOB does not store passwords. Account access does not enable real contract analysis.</p>
           </div>
 
           <form className="demo-login-form" noValidate onSubmit={handleSubmit(onSubmit)}>
@@ -154,12 +154,12 @@ export function DemoLoginPage() {
           <p className="demo-login-disclaimer" role="note">Demo entry only — no account is created, and this option sends no credentials.</p>
           {session && <p className="demo-login-account-note" role="status">A Supabase account session is already active in this browser.</p>}
 
-          <p className="demo-login-card__back"><Link to="/"><ArrowLeft size={14} aria-hidden="true" /> Back to ContractIQ</Link></p>
+          <p className="demo-login-card__back"><Link to="/"><ArrowLeft size={14} aria-hidden="true" /> Back to smartBOB</Link></p>
         </section>
       </div>
 
       <footer className="demo-entry-footer">
-        <span>ContractIQ · Frontend demo</span>
+        <span>smartBOB · Frontend demo</span>
         <span>Demo data is illustrative · account analysis uses the local worker</span>
       </footer>
     </main>

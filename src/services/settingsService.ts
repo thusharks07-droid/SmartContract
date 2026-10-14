@@ -14,7 +14,7 @@ export type AppSettings = {
 const storageKey = 'contractiq.settings'
 const defaultSettings: AppSettings = {
   theme: 'dark',
-  workspaceName: 'ContractIQ Demo',
+  workspaceName: 'smartBOB Demo',
   defaultView: 'dashboard',
   defaultOptions: { reentrancy: true, accessControl: true, staticAnalysis: true },
   defaultCompilerVersion: '0.8.24',
@@ -36,6 +36,9 @@ function readStoredSettings(): AppSettings {
         return {
           ...defaultSettings,
           ...stored,
+          workspaceName: stored.workspaceName === 'ContractIQ Demo'
+            ? defaultSettings.workspaceName
+            : stored.workspaceName ?? defaultSettings.workspaceName,
           motionExplicit: typeof stored.motionExplicit === 'boolean'
             ? stored.motionExplicit
             : Object.prototype.hasOwnProperty.call(stored, 'motion'),
