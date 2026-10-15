@@ -1,10 +1,11 @@
 # smartBOB local scanner API and worker
 
-This is a local-only backend foundation. The React account workspace now calls these endpoints; the separate demo workspace continues to use its seeded mock data. Account/demo separation remains explicit: this API accepts only a verified Supabase account bearer token, never a simulated demo session.
+The backend supports two explicit storage modes. `LOCAL_MODE=true` runs unauthenticated localhost scans in a persistent SQLite database and does not contact Supabase. `LOCAL_MODE=false` (the default if unset) retains the authenticated Supabase Account Mode API and service-role queue. Demo Mode remains frontend-only illustrative data in both modes.
 
 ## Architecture and trust boundary
 
 - `server.py` defaults to `127.0.0.1`, allows only the configured exact browser origins, and starts the authenticated API plus one private queue-consumer thread. Production bind/origin/concurrency settings are documented in the repository's [DEPLOYMENT.md](../DEPLOYMENT.md).
+- In local mode the API is restricted to loopback, local endpoints do not accept or imply authentication, and scans/findings/source are stored in SQLite at `.local-data/smartbob.sqlite3` by default. The database survives API restarts and remains on this computer until deleted. This mode is for local development only; do not expose it on a network or deploy it as Account Mode.
 - For centralized placeholder-only deployment environment references, see [`deployment/backend.env.example`](../deployment/backend.env.example); inject real values using the backend host's secret manager, not a committed file.
 - Every protected request validates its Supabase access token by asking Supabase Auth for the current user. The API takes the owner UUID only from that verified response; request `user_id` fields are rejected.
 - Optional AI explanations run in the trusted Python API. The browser sends only a saved scan/finding ID and provider choice; the server loads the completed owner-scoped finding and sends bounded detector metadata/evidence plus a limited source excerpt. AI never updates findings or scan status.
@@ -20,8 +21,8 @@ This is a local-only backend foundation. The React account workspace now calls t
 - Windows with Docker Desktop using Linux containers.
 - Python 3.10 or later on the host.
 - The analyzer image built as described below.
-- A server-only Supabase service-role key available locally. Do not use a personal access token, database password, or Vite variable for this value. Do not paste it into source files or commit it.
-- Optional `GROQ_API_KEY` and `GEMINI_API_KEY` backend keys for AI explanations. In local development, `server.py` reads only those non-`VITE_` names from the ignored repository-root `.env`; process environment values take precedence. Production deployments must inject them through the backend host's secret manager.
+- A server-only Supabase service-role key is required only when `LOCAL_MODE=false`. Local mode needs no Supabase URL, key, account, SQL setup, or Supabase connection.
+- Optional `GROQ_API_KEY` and `GEMINI_API_KEY` backend keys for AI explanations. In local development, `server.py` reads only an explicit allowlist of backend settings from the ignored repository-root `.env`; process environment values take precedence. Production deployments must inject them through the backend host's secret manager.
 
 ## Build and test
 
@@ -35,19 +36,29 @@ py -3 -m unittest discover -s scanner-worker/tests -v
 
 The API/queue unit tests use fake Auth, storage, and analyzer components. They make no request to Supabase and do not run SQL. Worker-container integration can still be tested separately with the fixture commands near the end of this file.
 
-## Run the local API and queue worker
+## Run local scans without Supabase
 
-Set these process environment variables in PowerShell. Obtain the project URL and public anon/publishable key from the existing local configuration. Obtain the service-role key from the Supabase project dashboard and keep it server-side. Provider API keys may be kept in the ignored root `.env` under `GROQ_API_KEY` and `GEMINI_API_KEY`; the Vite client never references those names. The backend does not read `.env.local` and does not print secret values.
+From the repository root in PowerShell, configure `.env` and build the isolated analyzer image once:
 
 ```powershell
-$env:CONTRACTIQ_SUPABASE_URL = "https://<project-ref>.supabase.co"
-$env:CONTRACTIQ_SUPABASE_ANON_KEY = "<public-anon-or-publishable-key>"
-$env:CONTRACTIQ_SUPABASE_SERVICE_ROLE_KEY = "<server-only-service-role-key>"
-$env:CONTRACTIQ_API_PORT = "8765"
-py -3 scanner-worker/server.py
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+docker info --format '{{.OSType}}' # must print linux
+docker build -t contractiq-slither-worker:0.1.0 -f scanner-worker/Dockerfile scanner-worker
+npm install
+npm run dev
 ```
 
-The server starts polling the Supabase queue as soon as it runs. It binds to loopback and stops with Ctrl+C. `CONTRACTIQ_API_PORT` is optional and defaults to `8765`. Starting it makes live Supabase Auth and PostgREST requests; this implementation phase and its tests did not start the server or connect to the live project.
+In a second PowerShell terminal, start the API and queue worker:
+
+```powershell
+python scanner-worker/server.py
+```
+
+The example sets `LOCAL_MODE=true`, `VITE_CONTRACTIQ_API_URL=http://127.0.0.1:8765`, and `.local-data/smartbob.sqlite3`. The landing page shows **Run a real local scan** in development. Submit one self-contained Solidity file with a supported compiler; the page polls the saved result and displays actual Slither findings. No Supabase service-role key is read or needed in local mode. Keep the API bound to localhost. Results and source persist across server restarts in `.local-data`; deleting that directory removes local scan history. Demo Mode remains separate and continues to use illustrative sample records.
+
+## Run Supabase Account Mode
+
+Set `LOCAL_MODE=false` in the ignored root `.env` (or process environment), configure `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`, and set backend `CONTRACTIQ_SUPABASE_URL`, `CONTRACTIQ_SUPABASE_ANON_KEY`, and `CONTRACTIQ_SUPABASE_SERVICE_ROLE_KEY`. The service-role key must remain server-side and must never use a `VITE_` name. Apply and review the proposed SQL separately as documented in the root [README](../README.md#sql-review-and-manual-application). Account Mode still validates the user's bearer token and stores scans in Supabase; local scans are not converted into account records.
 
 ## API contract
 

@@ -23,6 +23,7 @@ const FindingDetailsPage = lazy(() => import('./pages/FindingDetailsPage').then(
 const ReportPage = lazy(() => import('./pages/ReportPage').then((module) => ({ default: module.ReportPage })))
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then((module) => ({ default: module.SettingsPage })))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })))
+const LocalScanPage = lazy(() => import('./pages/LocalScanPage').then((module) => ({ default: module.LocalScanPage })))
 
 function AppNotFound() {
   const { isAuthenticated } = useDemoAuth()
@@ -48,6 +49,7 @@ function App() {
             <Route path="/login" element={<DemoLoginPage />} />
             <Route path="/privacy" element={<PublicInfoPage />} />
             <Route path="/terms" element={<PublicInfoPage />} />
+            <Route path="/local-scan" element={<Suspense fallback={<LoadingState label="Loading local scanner" />}><LocalScanPage /></Suspense>} />
 
             <Route element={<DemoAuthGuard />}>
               <Route path="/app" element={<AppShell />}>

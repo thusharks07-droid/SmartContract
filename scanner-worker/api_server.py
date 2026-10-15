@@ -8,11 +8,13 @@ import re
 import threading
 import time
 import uuid
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 from urllib.parse import unquote, urlsplit
 
 from ai_explanations import AiError, AiExplanationService
+from local_gateway import LOCAL_OWNER_ID
 from supabase_gateway import AuthenticationError, UpstreamError
 from worker import MAX_SOURCE_BYTES, SUPPORTED_COMPILERS
 
@@ -167,6 +169,8 @@ class ScanApi:
             "started_at": None,
             "completed_at": None,
             "notes": canonical_payload["notes"],
+            "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "updated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         }
         try:
             created = self.gateway.insert_queued_scan(row)
@@ -284,7 +288,7 @@ class AiRequestLimiter:
 
 def create_server(gateway, queue_worker, port: int = 8765, *, host: str = "127.0.0.1",
                   allowed_origins: set[str] | None = None, max_concurrency: int = 16,
-                  ai_service: AiExplanationService | None = None) -> ThreadingHTTPServer:
+                  ai_service: AiExplanationService | None = None, local_mode: bool = False) -> ThreadingHTTPServer:
     api = ScanApi(gateway)
     ai = ai_service or AiExplanationService()
     ai_slots = threading.BoundedSemaphore(2)
@@ -293,6 +297,8 @@ def create_server(gateway, queue_worker, port: int = 8765, *, host: str = "127.0
     allowed = allowed_origins if allowed_origins is not None else parse_allowed_origins(None)
     if not 1 <= max_concurrency <= 128:
         raise ValueError("max_concurrency must be between 1 and 128.")
+    if local_mode and host not in {"127.0.0.1", "localhost"}:
+        raise ValueError("LOCAL_MODE API must bind to 127.0.0.1 or localhost.")
 
     class Handler(BaseHTTPRequestHandler):
         server_version = "ContractIQLocalAPI/1"
@@ -352,9 +358,51 @@ def create_server(gateway, queue_worker, port: int = 8765, *, host: str = "127.0
                 parsed = urlsplit(self.path)
                 path = parsed.path.rstrip("/") or "/"
                 if method == "GET" and path == "/health":
-                    self._send(200, {"status": "ok", "service": "contractiq-local-api"})
+                    self._send(200, {"status": "ok", "service": "smartbob-api",
+                                     "mode": "local" if local_mode else "supabase"})
                     return
+                if path == "/api/local/status":
+                    if not local_mode:
+                        self._send(200, {"enabled": False, "mode": "supabase"})
+                    else:
+                        self._send(200, {"enabled": True, "mode": "local", "authenticated": False,
+                                         "storage": "sqlite", "persistsAcrossRestarts": True,
+                                         "analyzer": "slither"})
+                    return
+                if path.startswith("/api/local/"):
+                    if not local_mode:
+                        raise ApiError(409, "local_mode_disabled", "Local scans are disabled. Set LOCAL_MODE=true and restart the local API.")
+                    origin = self.headers.get("Origin")
+                    if origin and origin not in allowed:
+                        raise ApiError(403, "origin_denied", "This browser origin is not allowed to access the local scanner API.")
+                    owner_id = LOCAL_OWNER_ID
+                    if method == "POST" and path == "/api/local/scans":
+                        if not scan_limiter.allow(owner_id):
+                            raise ApiError(429, "scan_rate_limited", "Local scan limit reached. Wait a minute before submitting more source.")
+                        key = self.headers.get("Idempotency-Key", "")
+                        scan, replayed = api.submit(owner_id, key, self._body())
+                        self._send(200 if replayed else 202, {"mode": "local", "scan": scan, "replayed": replayed})
+                        return
+                    if method == "GET" and path == "/api/local/scans":
+                        self._send(200, {"mode": "local", "scans": api.list_scans(owner_id)})
+                        return
+                    match = re.fullmatch(r"/api/local/scans/([^/]+)(?:/(findings|source))?", path)
+                    if match and method == "GET":
+                        scan_id = unquote(match.group(1))
+                        suffix = match.group(2)
+                        if suffix is None:
+                            self._send(200, {"mode": "local", "scan": api.get_scan(owner_id, scan_id)})
+                            return
+                        if suffix == "findings":
+                            self._send(200, {"mode": "local", "findings": api.list_findings(owner_id, scan_id)})
+                            return
+                        if suffix == "source":
+                            self._send(200, {"mode": "local", **api.get_source(owner_id, scan_id)})
+                            return
+                    raise ApiError(404, "not_found", "Local scanner route was not found.")
                 if path.startswith("/api/"):
+                    if local_mode:
+                        raise ApiError(409, "account_mode_disabled", "Supabase Account Mode is not active on this local API. Use Local Scan; it is unauthenticated and stored only on this computer.")
                     owner_id = self._owner()
                     if method == "POST" and path == "/api/scans":
                         if not scan_limiter.allow(owner_id):

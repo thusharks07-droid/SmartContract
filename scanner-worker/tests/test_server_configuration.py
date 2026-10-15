@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import io
 import sys
+import tempfile
 import unittest
 from contextlib import redirect_stderr
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from server import configuration_status, report_configuration_status  # noqa: E402
+from local_gateway import LocalSQLiteGateway  # noqa: E402
+from server import build_gateway, configuration_status, report_configuration_status  # noqa: E402
 
 
 class StartupConfigurationTests(unittest.TestCase):
@@ -21,6 +23,7 @@ class StartupConfigurationTests(unittest.TestCase):
             "GEMINI_API_KEY": "gemini-secret-value",
         }
         expected = {
+            "local_mode": False,
             "supabase_url": True,
             "supabase_anon_key": True,
             "supabase_service_role_key": True,
@@ -41,6 +44,16 @@ class StartupConfigurationTests(unittest.TestCase):
         self.assertFalse(status["gemini_api_key"])
         self.assertFalse(status["groq_api_key"])
         self.assertFalse(status["supabase_service_role_key"])
+
+    def test_local_mode_starts_without_supabase_service_role(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            gateway, is_local = build_gateway({"LOCAL_MODE": "true", "LOCAL_MODE_DB_PATH": str(Path(directory) / "local.sqlite3")})
+            try:
+                self.assertTrue(is_local)
+                self.assertIsInstance(gateway, LocalSQLiteGateway)
+                self.assertTrue(gateway.database_path.exists())
+            finally:
+                gateway.close()
 
 
 if __name__ == "__main__":

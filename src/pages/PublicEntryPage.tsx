@@ -139,6 +139,7 @@ export function PublicEntryPage() {
             <div className="landing-hero__actions">
               <Link className="landing-button landing-button--primary" to="/login">Start scanning <ArrowRight size={16} aria-hidden="true" /></Link>
               <Link className="landing-button landing-button--quiet" to="/login?mode=demo">Explore demo <ArrowDown size={15} aria-hidden="true" /></Link>
+              {import.meta.env.DEV && <Link className="landing-button landing-button--quiet" to="/local-scan">Run a real local scan <ArrowRight size={15} aria-hidden="true" /></Link>}
             </div>
             <p className="landing-disclaimer"><Shield size={15} aria-hidden="true" /><span>Static analysis is a starting point for review, not a guarantee that every vulnerability will be found.</span></p>
           </div>
