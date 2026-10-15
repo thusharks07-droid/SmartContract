@@ -6,6 +6,7 @@ The backend supports two explicit storage modes. `LOCAL_MODE=true` runs unauthen
 
 - `server.py` defaults to `127.0.0.1`, allows only the configured exact browser origins, and starts the authenticated API plus one private queue-consumer thread. Production bind/origin/concurrency settings are documented in the repository's [DEPLOYMENT.md](../DEPLOYMENT.md).
 - In local mode the API is restricted to loopback, local endpoints do not accept or imply authentication, and scans/findings/source are stored in SQLite at `.local-data/smartbob.sqlite3` by default. The database survives API restarts and remains on this computer until deleted. This mode is for local development only; do not expose it on a network or deploy it as Account Mode.
+- If a local Slither scan fails, the local result page automatically requests a bounded Gemini source review when `GEMINI_API_KEY` is configured. The saved source excerpt is sent to Gemini; the response is clearly labeled AI-only and never stored as scanner findings or used to change the scan status. Gemini errors remain visible and do not get replaced with invented results.
 - For centralized placeholder-only deployment environment references, see [`deployment/backend.env.example`](../deployment/backend.env.example); inject real values using the backend host's secret manager, not a committed file.
 - Every protected request validates its Supabase access token by asking Supabase Auth for the current user. The API takes the owner UUID only from that verified response; request `user_id` fields are rejected.
 - Optional AI explanations run in the trusted Python API. The browser sends only a saved scan/finding ID and provider choice; the server loads the completed owner-scoped finding and sends bounded detector metadata/evidence plus a limited source excerpt. AI never updates findings or scan status.
@@ -54,7 +55,7 @@ In a second PowerShell terminal, start the API and queue worker:
 python scanner-worker/server.py
 ```
 
-The example sets `LOCAL_MODE=true`, `VITE_CONTRACTIQ_API_URL=http://127.0.0.1:8765`, and `.local-data/smartbob.sqlite3`. The landing page shows **Run a real local scan** in development. Submit one self-contained Solidity file with a supported compiler; the page polls the saved result and displays actual Slither findings. No Supabase service-role key is read or needed in local mode. Keep the API bound to localhost. Results and source persist across server restarts in `.local-data`; deleting that directory removes local scan history. Demo Mode remains separate and continues to use illustrative sample records.
+The example sets `LOCAL_MODE=true`, `VITE_CONTRACTIQ_API_URL=http://127.0.0.1:8765`, and `.local-data/smartbob.sqlite3`. The landing page shows **Run a real local scan** in development. Submit one self-contained Solidity file with a supported compiler; the page polls the saved result and displays actual Slither findings. If Slither fails and Gemini is configured, the page separately displays Gemini's AI-only review. No Supabase service-role key is read or needed in local mode. Keep the API bound to localhost. Results and source persist across server restarts in `.local-data`; deleting that directory removes local scan history. Demo Mode remains separate and continues to use illustrative sample records.
 
 ## Run Supabase Account Mode
 

@@ -13,6 +13,7 @@ import { useWorkspaceMode } from '../state/useWorkspaceMode'
 import { localScanApi, ScanApiError } from '../services/localScanApi'
 import type { AiExplanation, AiProviderChoice, ApiFinding, ApiScan, Severity } from '../services/localScanApi'
 import { settingsService } from '../services/settingsService'
+import { KnownContractReference } from '../components/KnownContractReference'
 
 const severityOrder: Severity[] = ['critical', 'high', 'medium', 'low', 'informational']
 const staticAnalysisNotice = 'Static analysis output only. Findings require independent validation; a scan with no findings is not a safety guarantee.'
@@ -176,13 +177,14 @@ function useAccountScan(scanId: string, includeSource = true): ScanLoad {
       const scanResult = await localScanApi.getScan(scanId, accessToken)
       setScan(scanResult)
       setError('')
-      if (scanResult.status === 'completed') {
-        const findingPromise = localScanApi.listFindings(scanId, accessToken)
-        const sourcePromise = includeSource ? localScanApi.getSource(scanId, accessToken) : Promise.resolve({ sourceCode: '', sourceFilename: null })
-        const [findingResult, sourceResult] = await Promise.all([findingPromise, sourcePromise])
-        setFindings(findingResult)
-        setSource(sourceResult.sourceCode)
-      } else { setFindings([]); setSource('') }
+      const findingPromise = scanResult.status === 'completed' ? localScanApi.listFindings(scanId, accessToken) : Promise.resolve([])
+      const sourcePromise = includeSource ? localScanApi.getSource(scanId, accessToken) : Promise.resolve({ sourceCode: '', sourceFilename: null })
+      const [findingResult, sourceResult] = await Promise.all([
+        findingPromise,
+        sourcePromise.catch(() => ({ sourceCode: '', sourceFilename: null })),
+      ])
+      setFindings(findingResult)
+      setSource(sourceResult.sourceCode)
     } catch (reason) { setError(errorText(reason)) }
     finally { setLoading(false) }
   }, [accessToken, includeSource, scanId])
@@ -205,7 +207,7 @@ export function AccountScanDetailsPage() {
   if (loading) return <LoadingState label="Loading account scan" />
   if (error) return <div className="page-stack"><PageHeader title="Scan details unavailable" eyebrow="ACCOUNT SCAN" /><ScanError message={error} retry={() => void refresh()} /><Link className="button button--secondary" to="/app/scans">Back to history</Link></div>
   if (!scan) return <div className="page-stack"><PageHeader title="Scan not found" eyebrow="ACCOUNT SCAN" description="This scan is not available to the signed-in account." /><EmptyState title="No matching scan" description="The ID may be invalid or owned by another account." action={<Link className="button button--primary" to="/app/scans">Back to history</Link>} /></div>
-  return <div className="page-stack"><PageHeader title={scan.contractName} eyebrow="ACCOUNT SCAN DETAILS" description={`${scan.id} · ${scan.sourceFilename ?? 'Solidity source'} · Submitted ${formatDate(scan.createdAt)}`} actions={<><AccountStatus status={scan.status} /><Link className={`button ${scan.status === 'completed' ? 'button--secondary' : 'button--secondary button--disabled'}`} aria-disabled={scan.status !== 'completed'} onClick={(event) => { if (scan.status !== 'completed') event.preventDefault() }} to={`/app/reports/${scan.id}`}>View report</Link></>} /><p className="notice-banner" role="note">{staticAnalysisNotice}</p>{scan.status === 'failed' && <ScanError message={workerFailureText(scan)} />} {(scan.status === 'queued' || scan.status === 'running') && <p className="notice-banner" role="status">{scan.status === 'queued' ? 'Queued for the local analysis worker.' : 'The local worker is analyzing this source. Status refreshes automatically.'}</p>}{scan.status === 'completed' && <section className="panel"><div className="section-heading"><div><p className="eyebrow">WORKER RESULT</p><h2>Findings</h2></div><span>{findings.length} returned</span></div>{findings.length ? <div className="recent-findings-list">{findings.map((finding) => <Link className="recent-finding-row" key={finding.id} to={`/app/scans/${scan.id}/findings/${finding.id}`}><FindingSeverity severity={finding.severity} /><span className="recent-finding-copy"><strong>{finding.title ?? finding.rule_id ?? 'Detector result'}</strong><small>{finding.rule_id ?? 'Detector ID unavailable'} · {finding.source_path ?? 'Location unavailable'}{finding.line_start ? `:${finding.line_start}` : ''}</small></span><ArrowRight size={15} /></Link>)}</div> : <p role="note">The analyzer returned zero findings. This does not establish that the contract is safe or free of vulnerabilities.</p>}</section>}{scan.status === 'completed' && <section className="panel"><div className="section-heading"><div><p className="eyebrow">SUBMITTED SOURCE</p><h2>{scan.sourceFilename ?? 'Solidity source'}</h2></div></div><CodeViewer value={source} filename={scan.sourceFilename ?? 'contract.sol'} height={460} /></section>}{typeof scan.summary.disclaimer === 'string' && <p className="subtle-copy">{scan.summary.disclaimer}</p>}</div>
+  return <div className="page-stack"><PageHeader title={scan.contractName} eyebrow="ACCOUNT SCAN DETAILS" description={`${scan.id} · ${scan.sourceFilename ?? 'Solidity source'} · Submitted ${formatDate(scan.createdAt)}`} actions={<><AccountStatus status={scan.status} /><Link className={`button ${scan.status === 'completed' ? 'button--secondary' : 'button--secondary button--disabled'}`} aria-disabled={scan.status !== 'completed'} onClick={(event) => { if (scan.status !== 'completed') event.preventDefault() }} to={`/app/reports/${scan.id}`}>View report</Link></>} /><p className="notice-banner" role="note">{staticAnalysisNotice}</p>{scan.status === 'failed' && <ScanError message={workerFailureText(scan)} />} {(scan.status === 'queued' || scan.status === 'running') && <p className="notice-banner" role="status">{scan.status === 'queued' ? 'Queued for the local analysis worker.' : 'The local worker is analyzing this source. Status refreshes automatically.'}</p>}<KnownContractReference source={source} />{scan.status === 'completed' && <section className="panel"><div className="section-heading"><div><p className="eyebrow">WORKER RESULT</p><h2>Findings</h2></div><span>{findings.length} returned</span></div>{findings.length ? <div className="recent-findings-list">{findings.map((finding) => <Link className="recent-finding-row" key={finding.id} to={`/app/scans/${scan.id}/findings/${finding.id}`}><FindingSeverity severity={finding.severity} /><span className="recent-finding-copy"><strong>{finding.title ?? finding.rule_id ?? 'Detector result'}</strong><small>{finding.rule_id ?? 'Detector ID unavailable'} · {finding.source_path ?? 'Location unavailable'}{finding.line_start ? `:${finding.line_start}` : ''}</small></span><ArrowRight size={15} /></Link>)}</div> : <p role="note">The analyzer returned zero findings. This does not establish that the contract is safe or free of vulnerabilities.</p>}</section>}{scan.status === 'completed' && <section className="panel"><div className="section-heading"><div><p className="eyebrow">SUBMITTED SOURCE</p><h2>{scan.sourceFilename ?? 'Solidity source'}</h2></div></div><CodeViewer value={source} filename={scan.sourceFilename ?? 'contract.sol'} height={460} /></section>}{typeof scan.summary.disclaimer === 'string' && <p className="subtle-copy">{scan.summary.disclaimer}</p>}</div>
 }
 
 export function AccountFindingDetailsPage() {

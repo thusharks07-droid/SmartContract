@@ -20,7 +20,7 @@ In a second terminal:
 python scanner-worker/server.py
 ```
 
-The development homepage shows **Run a real local scan**. Local mode is enabled by `LOCAL_MODE=true` in `.env`, binds to localhost, and needs no Supabase service-role key. Scan records, source, and findings are stored in `.local-data/smartbob.sqlite3` and survive API restarts. Delete `.local-data` to remove them. These local records are not authenticated and are never sent to Supabase. Demo Mode stays illustrative and separate.
+The development homepage shows **Run a real local scan**. Local mode is enabled by `LOCAL_MODE=true` in `.env`, binds to localhost, and needs no Supabase service-role key. Scan records, source, and findings are stored in `.local-data/smartbob.sqlite3` and survive API restarts. Delete `.local-data` to remove them. These local records are not authenticated and are never sent to Supabase. If Slither fails and `GEMINI_API_KEY` is configured, the local result page requests a separate AI-only source review from Gemini; that response is never represented as analyzer findings. Demo Mode stays illustrative and separate.
 
 Useful checks:
 

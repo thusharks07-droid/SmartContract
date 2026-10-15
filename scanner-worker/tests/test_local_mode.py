@@ -39,11 +39,24 @@ def docker_image_available() -> bool:
 DOCKER_ANALYZER_AVAILABLE = docker_image_available()
 
 
+class FakeGeminiReview:
+    def __init__(self) -> None:
+        self.sources: list[str] = []
+
+    def review_source_with_gemini(self, source: str) -> dict:
+        self.sources.append(source)
+        return {
+            "reviewText": "Summary: Gemini reviewed the saved source after the analyzer failed.\\nLimitations: AI-only.",
+            "provider": "gemini", "model": "gemini-2.5-flash",
+            "generatedAt": "2026-10-15T00:00:00Z", "reviewedChars": len(source), "sourceTruncated": False,
+        }
+
+
 class LocalApiHarness:
-    def __init__(self, database_path: Path, analyzer=run_scan, *, max_attempts: int = 1) -> None:
+    def __init__(self, database_path: Path, analyzer=run_scan, *, max_attempts: int = 1, ai_service=None) -> None:
         self.gateway = LocalSQLiteGateway(database_path)
         self.worker = QueueWorker(self.gateway, analyzer=analyzer, max_attempts=max_attempts)
-        self.server = create_server(self.gateway, self.worker, port=0, local_mode=True)
+        self.server = create_server(self.gateway, self.worker, port=0, local_mode=True, ai_service=ai_service)
         self.base = f"http://127.0.0.1:{self.server.server_address[1]}"
         self.stop = threading.Event()
         self.http_thread = threading.Thread(target=self.server.serve_forever, daemon=True)
@@ -142,6 +155,37 @@ class LocalModeApiTests(unittest.TestCase):
             self.assertEqual(scan["status"], "failed")
             self.assertEqual(scan["errorCode"], "analyzer_error")
             self.assertIsNotNone(scan["errorMessage"])
+        finally:
+            harness.close()
+
+    def test_failed_local_scan_can_return_separate_gemini_review_of_saved_source(self) -> None:
+        ai = FakeGeminiReview()
+
+        def conditional_analyzer(source: str, *args):
+            if "ReviewOnly" in source:
+                raise WorkerError("controlled analyzer failure")
+            return {"analysis_version": "test-double", "summary": {"finding_count": 0}, "findings": []}
+
+        harness = LocalApiHarness(self.database_path, analyzer=conditional_analyzer, ai_service=ai)
+        source = "pragma solidity 0.8.24; contract ReviewOnly {}"
+        try:
+            status, accepted = harness.submit(source)
+            self.assertEqual(status, 202)
+            scan_id = accepted["scan"]["id"]
+            self.assertEqual(harness.wait_for_terminal(scan_id)["status"], "failed")
+            review_status, response = harness.request("POST", f"/api/local/scans/{scan_id}/gemini-review")
+            self.assertEqual(review_status, 200)
+            self.assertEqual(response["mode"], "local")
+            self.assertEqual(response["review"]["provider"], "gemini")
+            self.assertIn("Gemini reviewed", response["review"]["reviewText"])
+            self.assertEqual(ai.sources, [source])
+            completed_status, completed_response = harness.submit("pragma solidity 0.8.24; contract Completed {}")
+            self.assertEqual(completed_status, 202)
+            completed_id = completed_response["scan"]["id"]
+            self.assertEqual(harness.wait_for_terminal(completed_id)["status"], "completed")
+            status, error = harness.request("POST", f"/api/local/scans/{completed_id}/gemini-review")
+            self.assertEqual(status, 409)
+            self.assertEqual(error["error"]["code"], "scan_not_failed")
         finally:
             harness.close()
 

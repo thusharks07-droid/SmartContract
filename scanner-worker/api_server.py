@@ -261,6 +261,24 @@ class ScanApi:
             raise ApiError(exc.status, exc.code, exc.message) from None
         return {"explanation": explanation}
 
+    def review_failed_local_scan(self, owner_id: str, scan_id: str,
+                                 ai_service: AiExplanationService) -> dict:
+        owner_id = _uuid(owner_id, "Local owner ID")
+        scan_id = _uuid(scan_id, "Scan ID")
+        scan = self.gateway.get_scan(scan_id, owner_id)
+        if not scan:
+            raise ApiError(404, "not_found", "Local scan was not found on this computer.")
+        if scan.get("status") != "failed":
+            raise ApiError(409, "scan_not_failed", "Gemini source review is available only after Slither cannot complete the scan.")
+        source = scan.get("source_code")
+        if not isinstance(source, str) or not source.strip():
+            raise ApiError(404, "source_not_found", "The saved source is unavailable for this local scan.")
+        try:
+            review = ai_service.review_source_with_gemini(source)
+        except AiError as exc:
+            raise ApiError(exc.status, exc.code, exc.message) from None
+        return {"review": review}
+
 
 class AiRequestLimiter:
     """Small in-memory per-user guard for the optional explanation endpoint."""
@@ -361,7 +379,7 @@ def create_server(gateway, queue_worker, port: int = 8765, *, host: str = "127.0
                     self._send(200, {"status": "ok", "service": "smartbob-api",
                                      "mode": "local" if local_mode else "supabase"})
                     return
-                if path == "/api/local/status":
+                if method == "GET" and path == "/api/local/status":
                     if not local_mode:
                         self._send(200, {"enabled": False, "mode": "supabase"})
                     else:
@@ -399,6 +417,18 @@ def create_server(gateway, queue_worker, port: int = 8765, *, host: str = "127.0
                         if suffix == "source":
                             self._send(200, {"mode": "local", **api.get_source(owner_id, scan_id)})
                             return
+                    review_match = re.fullmatch(r"/api/local/scans/([^/]+)/gemini-review", path)
+                    if method == "POST" and review_match:
+                        if not ai_limiter.allow(owner_id):
+                            raise ApiError(429, "ai_rate_limited", "Gemini review limit reached. Wait a minute before trying again.")
+                        if not ai_slots.acquire(blocking=False):
+                            raise ApiError(503, "ai_busy", "Gemini is busy. Retry the review shortly.")
+                        try:
+                            result = api.review_failed_local_scan(owner_id, unquote(review_match.group(1)), ai)
+                        finally:
+                            ai_slots.release()
+                        self._send(200, {"mode": "local", **result})
+                        return
                     raise ApiError(404, "not_found", "Local scanner route was not found.")
                 if path.startswith("/api/"):
                     if local_mode:

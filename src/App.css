@@ -288,6 +288,18 @@
 .page-stack { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); gap: 22px; }
 .page-stack > * { min-width: 0; }
 .panel { min-width: 0; padding: 20px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); }
+.known-contract-reference { border-color: color-mix(in srgb, var(--warning) 34%, var(--border)); }
+.known-contract-reference > p { color: var(--text-muted); font-size: 12px; line-height: 1.7; }
+.known-contract-reference__notice { padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--warning) 26%, var(--border)); border-radius: 6px; background: color-mix(in srgb, var(--warning) 6%, var(--surface)); }
+.known-contract-reference__badge { padding: 5px 8px; border-radius: 999px; color: var(--warning); background: color-mix(in srgb, var(--warning) 9%, var(--surface)); font-size: 10px; font-weight: 650; white-space: nowrap; }
+.known-contract-reference__locations { display: flex; flex-wrap: wrap; gap: 20px; margin: 14px 0; }
+.known-contract-reference__locations div { display: grid; gap: 4px; }
+.known-contract-reference__locations dt { color: var(--text-muted); font-size: 10px; }
+.known-contract-reference__locations dd { margin: 0; color: var(--text); font-size: 12px; }
+.known-contract-reference__fix { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 12px; line-height: 1.7; }
+.known-contract-reference__fix pre { overflow-x: auto; margin: 10px 0; padding: 12px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-raised); }
+.known-contract-reference__fix code { color: var(--text); font-size: 11px; }
+.known-contract-reference__fix p { margin: 0; }
 .section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 16px; }
 .section-heading h2, .panel > h2 { margin: 0; color: var(--text); font-size: 16px; font-weight: 610; letter-spacing: -.02em; }
 .section-heading .eyebrow { margin-bottom: 5px; }

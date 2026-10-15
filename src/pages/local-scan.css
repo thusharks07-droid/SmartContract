@@ -92,6 +92,10 @@
 .local-status--failed, .local-status--cancelled { background: #fbeae6; color: #a13d2d; }
 .local-status--queued, .local-status--running { background: #fff0de; color: #9b5c24; }
 .local-scan-results { margin-top: 18px; }
+.local-gemini-review { border-color: #edc6a6; background: linear-gradient(145deg, #fff9f2, #fffdf9); }
+.local-gemini-review__content { color: #302a25; }
+.local-gemini-review__content > p { color: #686057; font-size: 12px; line-height: 1.65; }
+.local-gemini-review__output { max-height: 560px; margin: 10px 0; overflow: auto; white-space: pre-wrap; color: #302a25; font-family: inherit; font-size: 13px; line-height: 1.7; }
 .local-scan-result-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding-bottom: 17px; border-bottom: 1px solid #eee7de; }
 .local-scan-result-heading h2 { margin: 5px 0; font-size: 22px; letter-spacing: -.03em; }
 .local-scan-result-heading p:last-child { margin: 0; color: #80786f; font-size: 11px; }

@@ -31,6 +31,15 @@ export type LocalFinding = {
   evidence: unknown
 }
 
+export type LocalGeminiReview = {
+  reviewText: string
+  provider: 'gemini'
+  model: string
+  generatedAt: string
+  reviewedChars: number
+  sourceTruncated: boolean
+}
+
 export type LocalSubmit = {
   contractName: string
   sourceFilename: string | null
@@ -100,6 +109,18 @@ function parseFinding(value: unknown): LocalFinding {
   }
 }
 
+function parseGeminiReview(value: unknown): LocalGeminiReview {
+  const row = asRecord(value)
+  if (typeof row.reviewText !== 'string' || !row.reviewText.trim()
+      || row.provider !== 'gemini' || typeof row.model !== 'string' || typeof row.generatedAt !== 'string'
+      || !Number.isInteger(row.reviewedChars) || typeof row.sourceTruncated !== 'boolean') {
+    throw new LocalModeApiError('invalid_response', 'Gemini returned an invalid source review.')
+  }
+  return { reviewText: row.reviewText,
+    provider: 'gemini', model: row.model, generatedAt: row.generatedAt,
+    reviewedChars: Number(row.reviewedChars), sourceTruncated: row.sourceTruncated }
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!apiBase) throw new LocalModeApiError('not_configured', 'Local scans are available from the local development server only.')
   if (!import.meta.env.DEV && !apiBase.startsWith('https://')) {
@@ -159,9 +180,19 @@ export const localModeApi = {
     const result = asRecord(await request<unknown>(`/api/local/scans/${encodeURIComponent(scanId)}`))
     return parseScan(result.scan)
   },
+  async getSource(scanId: string): Promise<{ sourceCode: string; sourceFilename: string | null }> {
+    const result = asRecord(await request<unknown>(`/api/local/scans/${encodeURIComponent(scanId)}/source`))
+    if (typeof result.sourceCode !== 'string') throw new LocalModeApiError('invalid_response', 'The local scan source is unavailable.')
+    return { sourceCode: result.sourceCode, sourceFilename: typeof result.sourceFilename === 'string' ? result.sourceFilename : null }
+  },
   async listFindings(scanId: string): Promise<LocalFinding[]> {
     const result = asRecord(await request<unknown>(`/api/local/scans/${encodeURIComponent(scanId)}/findings`))
     if (!Array.isArray(result.findings)) throw new LocalModeApiError('invalid_response', 'The local scan findings are invalid.')
     return result.findings.map(parseFinding)
+  },
+  async reviewFailedScanWithGemini(scanId: string): Promise<LocalGeminiReview> {
+    const result = asRecord(await request<unknown>(`/api/local/scans/${encodeURIComponent(scanId)}/gemini-review`, { method: 'POST' }))
+    if (result.mode !== 'local') throw new LocalModeApiError('wrong_mode', 'The API did not return a local Gemini review.')
+    return parseGeminiReview(result.review)
   },
 }

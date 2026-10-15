@@ -24,6 +24,7 @@ import type { ContractNode, Finding, RelationEdge, Severity, VerificationStatus 
 import { formatDateTime, getScanFileLabel } from './pageUtils'
 import { useWorkspaceMode } from '../state/useWorkspaceMode'
 import { AccountScanDetailsPage } from './AccountWorkspacePages'
+import { KnownContractReference } from '../components/KnownContractReference'
 
 const DependencyScene = lazy(() => import('../components/stage/Scenes').then((module) => ({ default: module.DependencyScene })))
 const RiskSurfaceScene = lazy(() => import('../components/stage/RiskSurfaceScene').then((module) => ({ default: module.RiskSurfaceScene })))
@@ -146,6 +147,7 @@ function DemoScanDetailsPage() {
       </StageShell> : scan.status === 'completed' && allFindings.length > 0 ? <RiskSurfaceFallback findings={allFindings} selectedFindingId={selectedFindingId || null} onSelectFinding={selectFinding} /> : riskFallback}
     </section>
     <ScanSummary scan={{ id: scan.id, targetName: scan.contractName, submittedAt: formatDateTime(scan.submittedAt), status: scan.status, findingCounts: Object.fromEntries(severities.filter((value): value is Severity => value !== 'all').map((value) => [value, allFindings.filter((finding) => finding.severity === value).length])) }} />
+    <KnownContractReference source={currentFile ? sourceService.get(currentFile, scan.id) ?? '' : ''} />
     {scan.status === 'failed' && <div className="notice-banner notice-banner--warning">This demo record is marked failed. Its attached findings are seeded examples, not output from a scan.</div>}
     {scan.status === 'cancelled' && <div className="notice-banner">This demo record is marked cancelled. No analysis was run for it.</div>}
     <section className="panel" aria-labelledby="findings-table-title"><div className="section-heading"><div><p className="eyebrow">DEMO FINDINGS</p><h2 id="findings-table-title">Findings</h2></div><span className="muted-cell">{allFindings.length} illustrative record{allFindings.length === 1 ? '' : 's'}</span></div>

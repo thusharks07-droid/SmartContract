@@ -6,7 +6,8 @@ import { AccountNewScanPage } from './AccountNewScanPage'
 import { AccountDashboardPage, AccountFindingDetailsPage, AccountScanDetailsPage } from './AccountWorkspacePages'
 import { AccountReportPage } from './AccountWorkspacePages'
 import { NewScanPage } from './NewScanPage'
-import { localScanApi } from '../services/localScanApi'
+import { localScanApi, ScanApiError } from '../services/localScanApi'
+import { localModeApi } from '../services/localModeApi'
 import { settingsService } from '../services/settingsService'
 import { ThemeProvider } from '../state/ThemeProvider'
 import { ToastProvider } from '../state/ToastProvider'
@@ -16,7 +17,11 @@ vi.mock('../state/useWorkspaceMode', () => ({ useWorkspaceMode: () => ({ mode: w
 vi.mock('../services/localScanApi', () => ({
   localScanApi: { submit: vi.fn(), getScan: vi.fn(), getSource: vi.fn(), listFindings: vi.fn(), listScans: vi.fn(), explainFinding: vi.fn(), getAiStatus: vi.fn() },
   makeIdempotencyKey: () => 'd7b8ed45-1384-4c15-9177-15a17b5fc012',
-  ScanApiError: class ScanApiError extends Error { code = 'test'; status = 500 },
+  ScanApiError: class ScanApiError extends Error { code: string; status = 500; constructor(message: string, code = 'test') { super(message); this.code = code } },
+}))
+vi.mock('../services/localModeApi', () => ({
+  localModeApi: { submit: vi.fn() },
+  LocalModeApiError: class LocalModeApiError extends Error { code = 'test'; status = 500 },
 }))
 vi.mock('../components/ui/CodeViewer', () => ({ CodeViewer: ({ value }: { value: string }) => <pre>{value}</pre> }))
 
@@ -73,6 +78,21 @@ describe('account workspace integration', () => {
     expect(await screen.findByText('Existing scan replayed')).toBeTruthy()
     expect(localScanApi.submit).toHaveBeenCalledTimes(2)
     expect(vi.mocked(localScanApi.submit).mock.calls[0]?.[2]).toBe(vi.mocked(localScanApi.submit).mock.calls[1]?.[2])
+  })
+
+  it('routes account submissions to local scan results when the API is in local mode', async () => {
+    vi.mocked(localScanApi.submit).mockRejectedValueOnce(new ScanApiError('account mode unavailable', 'account_mode_disabled'))
+    vi.mocked(localModeApi.submit).mockResolvedValueOnce({ ...accountScan('queued'), status: 'queued' })
+    render(<MemoryRouter initialEntries={['/app/new-scan']}><Routes>
+      <Route path="/app/new-scan" element={<AccountNewScanPage />} />
+      <Route path="/local-scan" element={<p>Local scan result opened</p>} />
+    </Routes></MemoryRouter>)
+    fireEvent.click(screen.getByRole('tab', { name: 'Paste Solidity' }))
+    fireEvent.change(screen.getByLabelText('Solidity source'), { target: { value: 'pragma solidity 0.8.24; contract Vault {}' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Submit for Static Analysis' }))
+    expect(await screen.findByText('Local scan result opened')).toBeTruthy()
+    expect(localModeApi.submit).toHaveBeenCalledWith(expect.objectContaining({ sourceCode: expect.stringContaining('contract Vault') }), expect.any(String))
+    expect(screen.queryByText(/Supabase Account Mode is not active/)).toBeNull()
   })
 
   it('renders only API-provided finding fields and a real source excerpt', async () => {

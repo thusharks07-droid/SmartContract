@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { AlertCircle, ArrowLeft, CheckCircle2, Clock3, FileCode2, LoaderCircle, ShieldAlert, Upload } from 'lucide-react'
 import { localModeApi } from '../services/localModeApi'
-import type { LocalFinding, LocalScan } from '../services/localModeApi'
+import type { LocalFinding, LocalGeminiReview, LocalScan } from '../services/localModeApi'
+import { KnownContractReference } from '../components/KnownContractReference'
 import './local-scan.css'
 
 const compilers = ['0.8.24', '0.8.23', '0.8.22', '0.8.19']
@@ -47,7 +48,24 @@ export function LocalScanPage() {
   const [history, setHistory] = useState<LocalScan[]>([])
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [geminiReviewState, setGeminiReviewState] = useState<{ scanId: string; review: LocalGeminiReview } | null>(null)
+  const [geminiErrorState, setGeminiErrorState] = useState<{ scanId: string; message: string } | null>(null)
+  const [geminiBusyScanId, setGeminiBusyScanId] = useState<string | null>(null)
+  const requestedGeminiReview = useRef(new Set<string>())
   const [refreshKey, setRefreshKey] = useState(0)
+  const geminiReview = geminiReviewState?.scanId === scanId ? geminiReviewState.review : null
+  const geminiError = geminiErrorState?.scanId === scanId ? geminiErrorState.message : ''
+  const geminiBusy = geminiBusyScanId === scanId
+
+  const requestGeminiReview = useCallback(async (id: string, retry = false) => {
+    if (!retry && requestedGeminiReview.current.has(id)) return
+    requestedGeminiReview.current.add(id)
+    setGeminiBusyScanId(id)
+    setGeminiErrorState({ scanId: id, message: '' })
+    try { setGeminiReviewState({ scanId: id, review: await localModeApi.reviewFailedScanWithGemini(id) }) }
+    catch (reason) { setGeminiErrorState({ scanId: id, message: reason instanceof Error ? reason.message : 'Gemini could not review this source.' }) }
+    finally { setGeminiBusyScanId((current) => current === id ? null : current) }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -65,6 +83,14 @@ export function LocalScanPage() {
         const current = await localModeApi.getScan(scanId)
         if (cancelled) return
         setScan(current)
+        try {
+          const submittedSource = await localModeApi.getSource(scanId)
+          if (cancelled) return
+          setSource(submittedSource.sourceCode)
+        } catch {
+          if (!cancelled) setSource('')
+        }
+        if (current.status === 'failed') void requestGeminiReview(current.id)
         if (current.status === 'completed') setFindings(await localModeApi.listFindings(scanId))
         else setFindings([])
         if (current.status === 'queued' || current.status === 'running') {
@@ -76,7 +102,7 @@ export function LocalScanPage() {
     }
     void refresh()
     return () => { cancelled = true; if (timer !== undefined) window.clearTimeout(timer) }
-  }, [scanId, refreshKey])
+  }, [scanId, refreshKey, requestGeminiReview])
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -135,6 +161,17 @@ export function LocalScanPage() {
         {(scan.status === 'queued' || scan.status === 'running') && <p className="local-scan-progress">The isolated Slither worker is processing this source. This page checks the saved scan status until it finishes.</p>}
         {scan.status === 'failed' && <ErrorNotice message={`${scan.errorCode ? `${scan.errorCode}: ` : ''}${scan.errorMessage || 'The analyzer could not complete this source.'}`} />}
         {scan.status === 'completed' && <><div className="local-scan-summary"><strong>{String(scan.summary.finding_count ?? findings.length)}</strong><span>finding{Number(scan.summary.finding_count ?? findings.length) === 1 ? '' : 's'} returned by Slither</span></div>{findings.length ? <div className="local-findings">{findings.map((finding) => <FindingCard key={finding.id} finding={finding} />)}</div> : <p className="local-scan-empty">Slither returned no findings for this source. A zero-finding result is not proof that the contract is safe.</p>}</>}
+      </section>}
+      {scan && <KnownContractReference source={source} />}
+      {scan?.status === 'failed' && <section className="local-scan-results local-gemini-review" aria-live="polite">
+        <div className="local-scan-result-heading"><div><p className="local-scan-eyebrow">AI FALLBACK · GEMINI</p><h2>Source review</h2><p>This is Gemini output, not Slither findings. The saved source is sent to Gemini for this review.</p></div></div>
+        {geminiBusy && <p className="local-scan-progress"><LoaderCircle size={15} className="local-spin" /> Gemini is reviewing the source because Slither could not complete the scan.</p>}
+        {geminiError && <><ErrorNotice message={geminiError} /><button className="local-scan-submit" type="button" onClick={() => void requestGeminiReview(scan.id, true)} disabled={geminiBusy}>Retry Gemini review</button></>}
+        {geminiReview && <div className="local-gemini-review__content">
+          <p className="local-finding__recommendation"><strong>AI generated · {geminiReview.provider} · {geminiReview.model}</strong>{geminiReview.sourceTruncated ? ` · Reviewed first ${geminiReview.reviewedChars.toLocaleString()} characters; source was truncated.` : ''}</p>
+          <pre className="local-gemini-review__output">{geminiReview.reviewText}</pre>
+          <p>This AI response is not persisted as findings and does not change scan status.</p>
+        </div>}
       </section>}
     </div>
   </main>

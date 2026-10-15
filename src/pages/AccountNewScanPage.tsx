@@ -6,6 +6,7 @@ import { PageHeader } from '../components/ui/PageHeader'
 import { useWorkspaceMode } from '../state/useWorkspaceMode'
 import { localScanApi, makeIdempotencyKey, ScanApiError } from '../services/localScanApi'
 import type { SubmitScanInput } from '../services/localScanApi'
+import { localModeApi, LocalModeApiError } from '../services/localModeApi'
 
 const supportedCompilers = ['0.8.24', '0.8.23', '0.8.22', '0.8.19'] as const
 const maximumBytes = 500_000
@@ -57,12 +58,25 @@ export function AccountNewScanPage() {
       setError('This browser cannot create a secure scan submission key. Update the browser and retry.')
       return
     }
+    const idempotencyKey = idempotencyRef.current?.key
+    if (!idempotencyKey) { setError('Could not prepare a secure scan submission. Retry.'); return }
     setSubmitting(true)
     try {
-      const result = await localScanApi.submit(input, accessToken, idempotencyRef.current.key)
+      const result = await localScanApi.submit(input, accessToken, idempotencyKey)
       idempotencyRef.current = null
       navigate(`/app/scans/${result.scan.id}`, { replace: true })
     } catch (reason) {
+      if (reason instanceof ScanApiError && reason.code === 'account_mode_disabled') {
+        try {
+          const localScan = await localModeApi.submit(input, idempotencyKey)
+          idempotencyRef.current = null
+          navigate(`/local-scan?scan=${encodeURIComponent(localScan.id)}`, { replace: true })
+          return
+        } catch (localReason) {
+          setError(localReason instanceof LocalModeApiError ? localReason.message : 'The local scanner could not accept this submission.')
+          return
+        }
+      }
       const message = reason instanceof ScanApiError ? reason.message : 'The local scan API could not accept this submission.'
       setError(message)
     } finally { setSubmitting(false) }
@@ -75,7 +89,7 @@ export function AccountNewScanPage() {
         <div className="source-tabs" role="tablist" aria-label="Source input type"><button type="button" role="tab" aria-selected={inputType === 'upload'} className={inputType === 'upload' ? 'source-tab source-tab--active' : 'source-tab'} onClick={() => { setInputType('upload'); setError('') }}><Upload size={15} />Upload Contract</button><button type="button" role="tab" aria-selected={inputType === 'paste'} className={inputType === 'paste' ? 'source-tab source-tab--active' : 'source-tab'} onClick={() => { setInputType('paste'); setError('') }}><FileCode2 size={15} />Paste Solidity</button></div>
         {inputType === 'upload' ? <div className="upload-area-wrap">{sourceFilename ? <div className="selected-file"><FileCode2 size={17} /><span className="selected-file__name"><strong>{sourceFilename}</strong><small>{new TextEncoder().encode(sourceCode).byteLength.toLocaleString()} bytes</small></span><button type="button" className="button button--ghost button--small" onClick={() => { setSourceFilename(''); setSourceCode(''); if (fileRef.current) fileRef.current.value = '' }}>Remove</button></div> : <button type="button" className="upload-dropzone" onClick={() => fileRef.current?.click()}><span className="upload-dropzone__icon"><Upload size={20} /></span><strong>Choose a .sol file</strong><span>Read in this browser, then submit to the local API</span></button>}<input ref={fileRef} className="sr-only" aria-label="Choose Solidity source file" type="file" accept=".sol,text/plain" onChange={(event) => void readFile(event.currentTarget.files?.[0])} /></div> : <label className="form-field"><span>Solidity source</span><textarea className="source-code-input" rows={18} wrap="off" value={sourceCode} onChange={(event) => { setSourceCode(event.target.value); setSourceFilename('pasted-contract.sol'); setError('') }} spellCheck={false} autoCapitalize="off" autoCorrect="off" /></label>}
         {error && <p className="field-error" role="alert"><AlertCircle size={14} />{error}</p>}
-        <p className="subtle-copy">Account mode sends this source to your local scanner API. It does not use demo records.</p>
+    <p className="subtle-copy">The API configuration controls where results are stored. If the API is in local mode, results stay on this computer; when Slither cannot complete a scan, the source may be sent to Gemini for a separately labeled AI-only review. AI output is not Slither output or a verified audit.</p>
       </section>
       <section className="panel"><div className="section-heading"><div><p className="eyebrow">SCAN CONFIGURATION</p><h2>Compiler and metadata</h2></div></div><div className="advanced-fields"><label className="form-field"><span>Contract name <small>(optional)</small></span><input type="text" maxLength={60} value={contractName} onChange={(event) => setContractName(event.target.value)} placeholder="Inferred from source when blank" /></label><label className="form-field"><span>Solidity compiler version</span><select value={compilerVersion} onChange={(event) => setCompilerVersion(event.target.value as typeof compilerVersion)}>{supportedCompilers.map((version) => <option value={version} key={version}>{version}</option>)}</select></label><label className="form-field form-field--wide"><span>Notes <small>(optional)</small></span><textarea rows={3} maxLength={500} value={notes} onChange={(event) => setNotes(event.target.value)} /></label></div><p className="subtle-copy">Pinned worker compiler versions only. No fabricated progress or findings are generated by the frontend.</p></section></div>
       <aside className="panel new-scan-summary"><p className="eyebrow">REVIEW</p><h2>Submission summary</h2><dl className="summary-list"><div><dt>Input type</dt><dd>{inputType === 'upload' ? 'Solidity file' : 'Pasted Solidity'}</dd></div><div><dt>Source</dt><dd>{inputType === 'upload' ? sourceFilename || 'No file selected' : `${sourceCode.split(/\r?\n/).length} lines`}</dd></div><div><dt>Compiler</dt><dd>{compilerVersion}</dd></div><div><dt>Size</dt><dd>{new TextEncoder().encode(sourceCode).byteLength.toLocaleString()} / 500,000 bytes</dd></div></dl><div className="summary-disclosure"><AlertCircle size={15} /><span>The server validates your Supabase token. The worker will update status and results after processing.</span></div><button className="button button--primary button--full" type="submit" disabled={submitting}>{submitting ? 'Submitting…' : 'Submit for Static Analysis'}</button><small className="button-note">A queued response means accepted, not completed.</small></aside>
